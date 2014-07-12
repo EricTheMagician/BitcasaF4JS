@@ -1,0 +1,1 @@
+BitcasaClient = module.exports.client

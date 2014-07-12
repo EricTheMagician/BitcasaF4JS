@@ -4,7 +4,11 @@
   "author": "Eric Yen <eric@ericyen.com>",
   "dependencies": {
     "fibers": "1.0.1",
-    "queue": "~2.2.0"
+    "queue": "~2.2.0",
+    "dict": "~1.4.0",
+    "rest-js": "0.0.5",
+    "rate-limit": "~0.1.1",
+    "limiter": "~1.0.5"
   },
   "devDependencies": {
     "grunt": "~0.4.5",

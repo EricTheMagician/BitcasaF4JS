@@ -7,7 +7,9 @@ module.exports = (grunt) ->
     coffee: {
       compile: {
         files: {
-          'build/BitcasaFS.js': ['src/*.coffee'],
+          # 'build/bitcasa/filesystem.js': ['src/file.coffee', 'src/folder.coffee'],
+          # 'build/bitcasa/client.js': ['src/client.coffee'],
+          'build/fs.js': ['src/*.coffee']
 
         }
       }
