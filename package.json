@@ -1,0 +1,17 @@
+{
+  "name": "BitcasaFS",
+  "description": "Bitcasa Fuse filesystem written in node",
+  "author": "Eric Yen <eric@ericyen.com>",
+  "dependencies": {
+    "fibers": "1.0.1",
+    "queue": "~2.2.0"
+  },
+  "devDependencies": {
+    "grunt": "~0.4.5",
+    "grunt-contrib-coffee": "~0.10.1",
+    "grunt-coffee-jshint": "~0.2.1",
+    "grunt-contrib-watch": "~0.6.1",
+    "grunt-mocha": "~0.4.11"
+  },
+  "engine": "node >= 0.10.0"
+}
