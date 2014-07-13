@@ -29,17 +29,28 @@ module.exports = (grunt) ->
         options: {
           reload: true
         }
-      }
+      },
       scripts:{
-        files:['src/*.coffee']
-        tasks:['coffee']
+        files:['src/*.coffee', 'test/**/*.coffee']
+        tasks:['coffee', 'mochaTest']
+      }
+    },
+    mochaTest: {
+      test: {
+        options: {
+          reporter: 'spec',
+          require: 'coffee-script/register'
+        },
+        src: ['test/**/*.coffee']
       }
     }
+
   });
 
   grunt.loadNpmTasks('grunt-contrib-coffee');
   grunt.loadNpmTasks('grunt-coffee-jshint');
   grunt.loadNpmTasks('grunt-contrib-watch');
+  grunt.loadNpmTasks('grunt-mocha-test');
 
   # Default task(s).
-  grunt.registerTask('default', ['coffee', 'coffee_jshint']);
+  grunt.registerTask('default', ['coffee', 'mochaTest']);
