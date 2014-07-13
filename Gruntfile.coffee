@@ -24,6 +24,12 @@ module.exports = (grunt) ->
     },
 
     watch:{
+      configFiles: {
+        files: [ 'Gruntfile.coffee' ],
+        options: {
+          reload: true
+        }
+      }
       scripts:{
         files:['src/*.coffee']
         tasks:['coffee']
