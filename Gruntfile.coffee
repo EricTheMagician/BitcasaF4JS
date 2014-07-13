@@ -32,14 +32,15 @@ module.exports = (grunt) ->
       },
       scripts:{
         files:['src/*.coffee', 'test/**/*.coffee']
-        tasks:['coffee', 'mochaTest']
+        tasks:['mochaTest', 'coffee']
       }
     },
     mochaTest: {
       test: {
         options: {
           reporter: 'spec',
-          require: 'coffee-script/register'
+          clearRequireCache: true,
+          # require: ['coffee-script/register']
         },
         src: ['test/**/*.coffee']
       }

@@ -1,4 +1,4 @@
 BitcasaClient = module.exports.client
-config = require('config.json')
+config = require('./config.json')
 
 client = new BitcasaClient
