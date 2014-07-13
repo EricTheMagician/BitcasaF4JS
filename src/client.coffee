@@ -6,6 +6,8 @@ class BitcasaClient
   loginUrl: ->
     "#{BASEURL}oauth2/authenticate?client_id=#{@id}&redirect_url=#{@redirectUrl}"
 
-  authenticate: (@code) ->
+  authenticate: (code) ->
+    url = "#{BASEURL}oauth2/access_token?secret=#{@secret}&code=#{code}"
+    new Error("Not implemented")
 
 module.exports.client = BitcasaClient
