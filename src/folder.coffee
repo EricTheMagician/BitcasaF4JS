@@ -8,6 +8,8 @@ else
   BitcasaFile = module.exports.file
 
 class BitcasaFolder
+  @folderAttr = 16895 ##according to filesystem information, the 14th bit is set and the read and write are available for everyone
+
   constructor: (@client, @bitcasaPath, @name, @ctime, @mtime, @children = [])->
 
   @parseFolder: (data, response, client, cb) ->
@@ -38,5 +40,12 @@ class BitcasaFolder
 
     if typeof(cb) == typeof(Function)
       cb()
+  getAttr: (cb)->
+    attr =
+      mode: BitcasaFolder.folderAttr,
+      nlink: @children.length + 1,
+      mtime: @mtime,
+      ctime: @ctime
+    cb(0,attr)
 
 module.exports.folder = BitcasaFolder
