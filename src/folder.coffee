@@ -8,7 +8,7 @@ else
   BitcasaFile = module.exports.file
 
 class BitcasaFolder
-  @folderAttr = 16895 ##according to filesystem information, the 14th bit is set and the read and write are available for everyone
+  @folderAttr = 0o40777 ##according to filesystem information, the 14th bit is set and the read and write are available for everyone
 
   constructor: (@client, @bitcasaPath, @name, @ctime, @mtime, @children = [])->
 
@@ -41,9 +41,10 @@ class BitcasaFolder
   getAttr: (cb)->
     attr =
       mode: BitcasaFolder.folderAttr,
-      nlink: @children.length + 1,
-      mtime: @mtime,
-      ctime: @ctime
+      size: 4096 #standard size of a directory
+      # nlink: @children.length + 1,
+      # mtime: @mtime,
+      # ctime: @ctime
     cb(0,attr)
 
 module.exports.folder = BitcasaFolder

@@ -89,16 +89,18 @@ class BitcasaClient
   getFolders: (cb) ->
     client = @
     children = client.folderTree.get('/').children
+    console.log 'children', children
     if children.length == 0
       callback = ->
         client.getFolders(cb)
       @getRoot callback
     else
-      callback = (data,response) ->
-        BitcasaFolder.parseFolder(data,response, client,cb)
-
       for folder in children
         @rateLimit.removeTokens 1, (err,remainingRequests) ->
+          f = folder;
+          callback = (data,response) ->
+            console.log "callback from folders #{f}"
+            BitcasaFolder.parseFolder(data,response, client,cb)
 
           url = "#{BASEURL}/folders#{client.folderTree.get("/#{folder}").bitcasaPath}?access_token=#{client.accessToken}&depth=0"
           client.client.get(url, callback)

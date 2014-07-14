@@ -8,7 +8,8 @@
     "dict": "~1.4.0",
     "rate-limit": "~0.1.1",
     "limiter": "~1.0.5",
-    "node-rest-client": "~1.0.0"
+    "node-rest-client": "~1.0.0",
+    "fuse4js": "~0.1.9"
   },
   "devDependencies": {
     "grunt": "~0.4.5",
