@@ -9,7 +9,7 @@ module.exports = (grunt) ->
         files: {
           # 'build/bitcasa/filesystem.js': ['src/file.coffee', 'src/folder.coffee'],
           # 'build/bitcasa/client.js': ['src/client.coffee'],
-          'build/fs.js': ['src/*.coffee']
+          'build/fs.js': ['src/file.coffee', 'src/folder.coffee', 'src/client.coffee', 'src/fs.coffee']
 
         }
       }
@@ -40,7 +40,7 @@ module.exports = (grunt) ->
         options: {
           reporter: 'spec',
           clearRequireCache: true,
-          timeout: 5000,
+          timeout: 30000,
           # require: ['coffee-script/register']
         },
         src: ['test/**/*.coffee']
