@@ -3,6 +3,7 @@ RateLimiter = require('limiter').RateLimiter
 Client = require('node-rest-client').Client;
 dict = require 'dict'
 pth = require 'path'
+fs = require 'fs'
 
 #for mocha testing
 if Object.keys( module.exports ).length == 0
@@ -20,6 +21,11 @@ class BitcasaClient
     @bitcasaTree = new dict({'/': '/'})
     if @accessToken != null
       @setRest()
+
+    client = @;
+    fs.exists @cacheLocation, (exists) ->
+      if !exists
+        fs.mkdirSync(client.cacheLocation)
 
   setRest: ->
     @client = new Client
@@ -45,20 +51,28 @@ class BitcasaClient
 
   download: (path, name, start,end,size,cb ) ->
     client = @
-    args =
-      "path":
-        "path": path
-      headers:
-        Range: "bytes=#{start}-#{Math.min(size,end)}"
-    console.log args
-    callback = (data,response) ->
-      location = pth.join(client.cacheLocation,"#{name}-#{start}-#{end}")
-      console.log response
-      console.log data.length
-      if typeof(cb) ==  typeof(Function)
-        cb()
+    @rateLimit.removeToken 1, (err, remainingRequests) ->
+      if err
+        t = ->
+          client.download(path, name, start,end,size,cb )
+        setTimeout(t, 60000)
+      else
+        args =
+          "path":
+            "path": path
+          headers:
+            Range: "bytes=#{start}-#{Math.min(size,end)}"
+        callback = (data,response) ->
+          location = pth.join(client.cacheLocation,"#{name}-#{start}-#{end}")
+          buf = response.client._buffer.pool
 
-    client.client.methods.downloadChunk args,callback
+          fd = fs.createWriteStream(location)
+          fd.end(buf,'binary')
+          fd.on 'finish', ->
+            if typeof(cb) ==  typeof(Function)
+              cb()
+
+        client.client.methods.downloadChunk args,callback
 
   getFolders: (cb) ->
     client = @
