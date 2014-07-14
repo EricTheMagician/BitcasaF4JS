@@ -1,13 +1,18 @@
 config = require('./config.json')
 f4js = require 'fuse4js'
-
+winston = require 'winston'
 BitcasaClient = module.exports.client
 
 #bitcasa client
 client = new BitcasaClient(config.clientId, config.secret, config.redirectUrl, config.accessToken)
 #get folder attributes in the background
 client.getFolders()
-
+logger = new (winston.Logger)({
+    transports: [
+      new (winston.transports.Console)({ level: 'debug' }),
+      new (winston.transports.File)({ filename: '/tmp/somefile.log', level:'debug' })
+    ]
+  })
 errnoMap =
     EPERM: 1,
     ENOENT: 2,
@@ -17,12 +22,14 @@ errnoMap =
 
 
 getattr = (path, cb) ->
+  logger.log('debug', "getattr #{path}")
   folderTree =  client.folderTree
   if folderTree.has(path)
     return client.folderTree.get(path).getAttr(cb)
   else
     return cb(-2)
 readdir = (path, cb) ->
+  logger.log('debug', "readdir #{path}")
   folderTree =  client.folderTree
   if folderTree.has(path)
     return cb(0,client.folderTree.get(path).children)
@@ -46,12 +53,35 @@ chmod = (path,mod, cb) ->
 #  *     A positive value represents the number of bytes actually read.
 #  */
 read = (path, offset, len, buf, fh, cb) ->
+
+init = (cb) ->
+  logger.log('info', 'Starting fuse4js on node-bitcasa')
+  # logger.log('info', "client token #{client.accessToken}")
+  cb()
+
+statfs= (cb) ->
+    cb(0, {
+        bsize: 1000000,
+        frsize: 1000000,
+        blocks: 1000000,
+        bfree: 1000000,
+        bavail: 1000000,
+        files: 1000000,
+        ffree: 1000000,
+        favail: 1000000,
+        fsid: 1000000,
+        flag: 1000000,
+        namemax: 1000000
+    })
+    
 handlers =
   getattr: getattr,
   readdir: readdir,
+  init: init,
+  statfs: statfs
   # readlink: readlink,
   # chmod: chmod,
-  read: read,
+  # read: read,
   # write: write,
   # release: release,
   # create: create,
@@ -62,12 +92,10 @@ handlers =
   # init: init,
   # destroy: destroy
 
-
-console.log('mount point ', config.mountPoint)
-
 try
   console.log 'attempting to start f4js'
   opts = ['-o', 'allow_other']
-  # f4js.start(config.mountPoint, handlers, true,opts);
+  f4js.start(config.mountPoint, handlers, true,opts);
+  logger.log('debug', "mount point: #{config.mountPoint}")
 catch e
-  console.log("Exception when starting file system: " + e);
+  console.log("Exception when starting file system: #{e}")
