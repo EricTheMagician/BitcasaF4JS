@@ -27,16 +27,14 @@ class BitcasaFolder
 
     	#add child to parent folder
     	parentFolder = client.folderTree.get parent
-    	parentFolder.children.push realPath
+    	parentFolder.children.push o.name
 
     	if o.category == 'folders'
     		# keep track of the conversion of bitcasa path to real path
         client.bitcasaTree.set o.path, realPath
         client.folderTree.set realPath, new BitcasaFolder(client, o.path, o.name, o.ctime, o.mtime)
 	    else
-        if o.size > 47185920 and o.size < 52428800
-          console.log o, o.size,o.path
-
+        client.folderTree.set realPath, new BitcasaFile(client, o.path, o.name, o.ctime, o.mtime)
 
     if typeof(cb) == typeof(Function)
       cb()
