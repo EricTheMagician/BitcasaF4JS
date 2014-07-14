@@ -14,28 +14,30 @@ class BitcasaFolder
 
   @parseFolder: (data, response, client, cb) ->
     # console.log(response)
-    data = JSON.parse(data)
-    # console.log(data.result)
-    if data.error
-    	new Error('error with parsing folder')
-    for o in data.result.items
-    	# console.log o
+    try
+      data = JSON.parse(data)
+      # console.log(data.result)
+      if data.error
+      	new Error('error with parsing folder')
+      for o in data.result.items
+      	# console.log o
 
-    	#get real path of parent
-    	parent = client.bitcasaTree.get(pth.dirname(o.path))
-    	realPath = pth.join(parent,o.name)
+      	#get real path of parent
+      	parent = client.bitcasaTree.get(pth.dirname(o.path))
+      	realPath = pth.join(parent,o.name)
 
-    	#add child to parent folder
-    	parentFolder = client.folderTree.get parent
-    	parentFolder.children.push o.name
+      	#add child to parent folder
+      	parentFolder = client.folderTree.get parent
+      	parentFolder.children.push o.name
 
-    	if o.category == 'folders'
-    		# keep track of the conversion of bitcasa path to real path
-        client.bitcasaTree.set o.path, realPath
-        client.folderTree.set realPath, new BitcasaFolder(client, o.path, o.name, o.ctime, o.mtime)
-	    else
-        client.folderTree.set realPath, new BitcasaFile(client, o.path, o.name, o.ctime, o.mtime)
-
+      	if o.category == 'folders'
+      		# keep track of the conversion of bitcasa path to real path
+          client.bitcasaTree.set o.path, realPath
+          client.folderTree.set realPath, new BitcasaFolder(client, o.path, o.name, o.ctime, o.mtime)
+  	    else
+          client.folderTree.set realPath, new BitcasaFile(client, o.path, o.name, o.ctime, o.mtime)
+    catch error
+      console.log 'data is not a json'
     if typeof(cb) == typeof(Function)
       cb()
   getAttr: (cb)->
