@@ -13,7 +13,7 @@ else
   BitcasaFolder = module.exports.folder
 
 class BitcasaClient
-  constructor: (@id, @secret, @redirectUrl, @accessToken = null, @chunkSize = 1024*1024, @cacheLocation = '/tmp/node-bitcasa') ->
+  constructor: (@id, @secret, @redirectUrl, logger, @accessToken = null, @chunkSize = 1024*1024, @cacheLocation = '/tmp/node-bitcasa') ->
     @rateLimit = new RateLimiter 180, 'minute'
     now = (new Date).getTime()
     root = new BitcasaFolder(@,'/', 'root', now, now, [])
@@ -72,7 +72,7 @@ class BitcasaClient
 
     if fs.existsSync(location)
       fd = fs.openSync(location)
-      size = end -start;
+      size = end -start+1;
       buffer = new Buffer(size)
       data = fs.readSync(fd,buffer,0, size,0)
       cb(buffer, start - chunkStart, end-chunkStart)
@@ -119,8 +119,8 @@ class BitcasaClient
           @rateLimit.removeTokens 1, (err,remainingRequests) ->
             callback = (data,response) ->
               BitcasaFolder.parseFolder(data,response, client,cb)
-
-            url = "#{BASEURL}/folders#{object.bitcasaPath}?access_token=#{client.accessToken}"
-            client.client.get(url, callback)
+            if not err
+              url = "#{BASEURL}/folders#{object.bitcasaPath}?access_token=#{client.accessToken}"
+              client.client.get(url, callback)
 
 module.exports.client = BitcasaClient

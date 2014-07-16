@@ -3,16 +3,18 @@ f4js = require 'fuse4js'
 winston = require 'winston'
 BitcasaClient = module.exports.client
 
-#bitcasa client
-client = new BitcasaClient(config.clientId, config.secret, config.redirectUrl, config.accessToken)
-#get folder attributes in the background
-client.getFolders()
 logger = new (winston.Logger)({
     transports: [
       new (winston.transports.Console)({ level: 'debug' }),
       new (winston.transports.File)({ filename: '/tmp/somefile.log', level:'debug' })
     ]
   })
+
+#bitcasa client
+client = new BitcasaClient(config.clientId, config.secret, config.redirectUrl, config.accessToken, logger)
+#get folder attributes in the background
+client.getFolders()
+
 errnoMap =
     EPERM: 1,
     ENOENT: 2,
@@ -58,7 +60,7 @@ chmod = (path,mod, cb) ->
 #  *     A positive value represents the number of bytes actually read.
 #  */
 read = (path, offset, len, buf, fh, cb) ->
-  logger.log('debug', "reading file #{path}, offset #{offset}")
+  logger.log('debug', "reading file #{path}, offset #{offset}, fh #{fh}")
   folderTree =  client.folderTree
   if folderTree.has(path)
     callback = (dataBuf,dataStart,dataEnd)->
@@ -78,11 +80,16 @@ init = (cb) ->
   cb()
 
 open = (path, flags, cb) ->
-  logger.log('debug', "opening file #{path}, #{flags}")
   err = 0 # assume success
   folderTree =  client.folderTree
-  if not folderTree.has(path)
+  logger.log('debug', "opening file #{path}, #{flags},  exists #{folderTree.has(path)}")
+  if folderTree.has(path)
+    cb(0,1)
+  else
     cb(errnoMap.ENOENT)# // we don't return a file handle, so fuse4js will initialize it to 0
+
+flush = (unkown..., cb) ->
+  cb(0)
 
 release =  (path, fh, cb) ->
   cb(0)
@@ -110,6 +117,7 @@ handlers =
   readlink: readlink,
   chmod: chmod,
   open:open,
+  flush: flush
   # read: read,
   # write: write,
   # release: release,
