@@ -25,22 +25,27 @@ getattr = (path, cb) ->
   logger.log('debug', "getattr #{path}")
   folderTree =  client.folderTree
   if folderTree.has(path)
-    return client.folderTree.get(path).getAttr(cb)
+    callback = (status, attr)->
+      logger.log('debug', "attr size: #{attr.size}")
+      logger.log('debug', "attr mtime: #{attr.mtime}")
+      cb(status, attr)
+    return client.folderTree.get(path).getAttr(callback)
   else
-    return cb(-2)
+    return cb(-errnoMap.ENOENT)
 readdir = (path, cb) ->
   logger.log('debug', "readdir #{path}")
+  client.getFolders path
   folderTree =  client.folderTree
   if folderTree.has(path)
     return cb(0,client.folderTree.get(path).children)
   else
-    return cb(-2)
+    return cb(-errnoMap.ENOENT)
 
 readlink = (path,cb ) ->
-  return cb(-errnoMap.EACCES)
+  return cb(-errnoMap.ENOENT)
 
 chmod = (path,mod, cb) ->
-  return cb(-errnoMap.EACCES)
+  return cb(-errnoMap.ENOENT)
 
 # /*
 #  * Handler for the read() system call.
@@ -53,6 +58,19 @@ chmod = (path,mod, cb) ->
 #  *     A positive value represents the number of bytes actually read.
 #  */
 read = (path, offset, len, buf, fh, cb) ->
+  logger.log('debug', "reading file #{path}, offset #{offset}")
+  folderTree =  client.folderTree
+  if folderTree.has(path)
+    callback = (dataBuf,dataStart,dataEnd)->
+      dataBuf.copy(buf,0,dataStart,dataEnd);
+      cb(dataEnd-dataStart+1);
+
+    client.folderTree.get(path).download(offset, offset+len,true, callback)
+
+
+  else
+    return cb(-errnoMap.ENOENT)
+
 
 init = (cb) ->
   logger.log('info', 'Starting fuse4js on node-bitcasa')
@@ -73,14 +91,15 @@ statfs= (cb) ->
         flag: 1000000,
         namemax: 1000000
     })
-    
+
 handlers =
   getattr: getattr,
   readdir: readdir,
   init: init,
   statfs: statfs
-  # readlink: readlink,
-  # chmod: chmod,
+  readlink: readlink,
+  chmod: chmod,
+  open:open,
   # read: read,
   # write: write,
   # release: release,

@@ -28,14 +28,15 @@ class BitcasaFolder
 
       	#add child to parent folder
       	parentFolder = client.folderTree.get parent
-      	parentFolder.children.push o.name
+      	if o.name not in parentFolder.children
+          parentFolder.children.push o.name
 
       	if o.category == 'folders'
       		# keep track of the conversion of bitcasa path to real path
           client.bitcasaTree.set o.path, realPath
-          client.folderTree.set realPath, new BitcasaFolder(client, o.path, o.name, o.ctime, o.mtime)
+          client.folderTree.set realPath, new BitcasaFolder(client, o.path, o.name, new Date(o.ctime), new Date(o.mtime))
   	    else
-          client.folderTree.set realPath, new BitcasaFile(client, o.path, o.name, o.ctime, o.mtime)
+          client.folderTree.set realPath, new BitcasaFile(client, o.path, o.name,o.size,  new Date(o.ctime), new Date(o.mtime))
     catch error
       console.log 'data was likely not a json variable'
     if typeof(cb) == typeof(Function)
@@ -44,9 +45,9 @@ class BitcasaFolder
     attr =
       mode: BitcasaFolder.folderAttr,
       size: 4096 #standard size of a directory
-      # nlink: @children.length + 1,
-      # mtime: @mtime,
-      # ctime: @ctime
+      nlink: @children.length + 1,
+      mtime: @mtime,
+      ctime: @ctime
     cb(0,attr)
 
 module.exports.folder = BitcasaFolder

@@ -13,7 +13,7 @@ else
   BitcasaFolder = module.exports.folder
 
 class BitcasaClient
-  constructor: (@id, @secret, @redirectUrl, @accessToken = null, @cacheLocation = '/tmp/node-bitcasa') ->
+  constructor: (@id, @secret, @redirectUrl, @accessToken = null, @chunkSize = 1024*1024, @cacheLocation = '/tmp/node-bitcasa') ->
     @rateLimit = new RateLimiter 180, 'minute'
     now = (new Date).getTime()
     root = new BitcasaFolder(@,'/', 'root', now, now, [])
@@ -50,11 +50,22 @@ class BitcasaClient
     @rateLimit.removeTokens 1, (err, remaining) ->
       client.client.methods.getRootFolder callback
 
-  download: (path, name, start,end,size,cb ) ->
+  # callback should take 3 parameters:
+  #   a buffer, where to start and where to end.
+  #   the buffer is where the data is located
+  download: (path, name, start,end,size, recurse, cb ) ->
     client = @
 
-    #save location
-    location = pth.join(client.cacheLocation,"#{name}-#{start}-#{end}")
+    #round the amount of bytes to be downloaded to multiple chunks
+    chunkStart = Math.floor(start/client.chunkSize) * client.chunkSize
+    chunkEnd = Math.min( Math.ceil(end/client.chunkSize) * client.chunkSize, size) #and make sure that it's not bigger than the actual file
+    chunks = (chunkEnd - chunkStart)/client.chunkSize
+
+    if chunks > 1
+      throw new Error('number of chunks requested needs to be 1')
+
+    #save locations
+    locations = pth.join(client.cacheLocation,"#{name}-#{chunkStart}-#{chunkEnd}")
 
     #check if the data has been cached or not
     #otherwise, download from the web
@@ -64,11 +75,12 @@ class BitcasaClient
       size = end -start;
       buffer = new Buffer(size)
       data = fs.readSync(fd,buffer,0, size,0)
+      cb(buffer, start - chunkStart, end-chunkStart)
     else
       @rateLimit.removeToken 1, (err, remainingRequests) ->
         if err
           t = ->
-            client.download(path, name, start,end,size,cb )
+            client.download(path, name, start,end,size, true,cb )
           setTimeout(t, 60000)
         else
           args =
@@ -82,28 +94,33 @@ class BitcasaClient
             fd = fs.createWriteStream(location)
             fd.end(buf,'binary')
             fd.on 'finish', ->
-              if typeof(cb) ==  typeof(Function)
-                cb()
-
+              cb(buf, start - chunkStart, end - chunkStart)
           client.client.methods.downloadChunk args,callback
+    if recurse
+      callback = ->
+      client.download(path, name, start + client.chunkSize,end + client.chunkSize,size, false, callback )
 
-  getFolders: (cb) ->
+  getFolders: (path..., cb) ->
+    if path.length == 0
+      path = '/'
+    console.log path
     client = @
-    children = client.folderTree.get('/').children
+    parent = client.folderTree.get(path)
+    children = parent.children
     console.log 'children', children
-    if children.length == 0
+    if children.length == 0 and parent.name == 'root'
       callback = ->
         client.getFolders(cb)
       @getRoot callback
     else
-      for folder in children
-        @rateLimit.removeTokens 1, (err,remainingRequests) ->
-          f = folder;
-          callback = (data,response) ->
-            console.log "callback from folders #{f}"
-            BitcasaFolder.parseFolder(data,response, client,cb)
+      for child in children
+        object = client.folderTree.get(pth.join(path,child))
+        if object instanceof BitcasaFolder
+          @rateLimit.removeTokens 1, (err,remainingRequests) ->
+            callback = (data,response) ->
+              BitcasaFolder.parseFolder(data,response, client,cb)
 
-          url = "#{BASEURL}/folders#{client.folderTree.get("/#{folder}").bitcasaPath}?access_token=#{client.accessToken}"
-          client.client.get(url, callback)
+            url = "#{BASEURL}/folders#{object.bitcasaPath}?access_token=#{client.accessToken}"
+            client.client.get(url, callback)
 
 module.exports.client = BitcasaClient
