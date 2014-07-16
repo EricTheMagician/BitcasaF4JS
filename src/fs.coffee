@@ -77,6 +77,16 @@ init = (cb) ->
   # logger.log('info', "client token #{client.accessToken}")
   cb()
 
+open = (path, flags, cb) ->
+  logger.log('debug', "opening file #{path}, #{flags}")
+  err = 0 # assume success
+  folderTree =  client.folderTree
+  if not folderTree.has(path)
+    cb(errnoMap.ENOENT)# // we don't return a file handle, so fuse4js will initialize it to 0
+
+release =  (path, fh, cb) ->
+  cb(0)
+
 statfs= (cb) ->
     cb(0, {
         bsize: 1000000,
