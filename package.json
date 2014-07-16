@@ -10,7 +10,8 @@
     "limiter": "~1.0.5",
     "node-rest-client": "~1.0.0",
     "fuse4js": "~0.1.9",
-    "winston": "~0.7.3"
+    "winston": "~0.7.3",
+    "MD5": "~1.2.1"
   },
   "devDependencies": {
     "grunt": "~0.4.5",

@@ -7,7 +7,7 @@ BitcasaFile = module.exports.file
 
 logger = new (winston.Logger)({
     transports: [
-      new (winston.transports.Console)({ level: 'debug' }),
+      new (winston.transports.Console)({ level: 'info' }),
       new (winston.transports.File)({ filename: '/tmp/somefile.log', level:'debug' })
     ]
   })
@@ -30,8 +30,6 @@ getattr = (path, cb) ->
   folderTree =  client.folderTree
   if folderTree.has(path)
     callback = (status, attr)->
-      logger.log('debug', "attr size: #{attr.size}")
-      logger.log('debug', "attr mtime: #{attr.mtime}")
       cb(status, attr)
     return client.folderTree.get(path).getAttr(callback)
   else
@@ -64,12 +62,31 @@ chmod = (path,mod, cb) ->
 read = (path, offset, len, buf, fh, cb) ->
   logger.log('debug', "reading file #{path}")
   folderTree =  client.folderTree
+  downloadTree = client.downloadTree
   if folderTree.has(path)
-    callback = (dataBuf,dataStart,dataEnd)->
+    file = client.folderTree.get(path)
+
+    #check to see if part of the file is being downloaded
+    chunkStart = Math.floor(offset/client.chunkSize) * client.chunkSize
+    chunkEnd = Math.min( Math.ceil((offset+len)/client.chunkSize) * client.chunkSize, file.size) #and make sure that it's not bigger than the actual file
+    if downloadTree.has("#{path}-#{chunkStart}")
+      callback = ->
+        read(path, offset, len, buf, fh, cb)
+      setTimeout(fn, 500)
+    else
+      downloadTree.set("#{path}-#{chunkStart}", 1)
+
+
+    callback = (dataBuf,dataStart,dataEnd) ->
+
+      logger.log("debug", "read callback #{dataStart}-#{dataEnd}")
       dataBuf.copy(buf,0,dataStart,dataEnd);
+      logger.log("debug", "read callback #{dataStart}-#{dataEnd}")
+      downloadTree.delete("#{path}-#{chunkStart}")
       cb(dataEnd-dataStart+1);
 
-    client.folderTree.get(path).download(offset, offset+len,true, callback)
+
+    file.download(offset, offset+len-1,callback)
 
 
   else
@@ -90,7 +107,8 @@ open = (path, flags, cb) ->
   else
     cb(errnoMap.ENOENT)# // we don't return a file handle, so fuse4js will initialize it to 0
 
-flush = (unkown..., cb) ->
+flush = (buf, cb) ->
+  logger.log("debug", "#{typeof buf}")
   cb(0)
 
 release =  (path, fh, cb) ->

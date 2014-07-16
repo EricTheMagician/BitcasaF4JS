@@ -1,16 +1,16 @@
 chai = require "chai"
 winston = require 'winston'
 expect = chai.expect
-
+md5 = require 'MD5'
 modules = require '../src/client.coffee'
 config = require '../build/config.json'
+fs = require 'fs'
 BitcasaClient = modules.client
 
 
 logger = new (winston.Logger)({
     transports: [
-      new (winston.transports.Console)({ level: 'debug' }),
-      new (winston.transports.File)({ filename: '/tmp/somefile.log', level:'info' })
+      new (winston.transports.Console)({ level: 'info' }),
     ]
   })
 
@@ -26,7 +26,7 @@ describe 'BitcasaClient instance', ->
       client = new BitcasaClient config.clientId, config.secret, config.redirectUrl, logger,config.accessToken
       expect(client.loginUrl()).to.equal("https://developer.api.bitcasa.com/v1/oauth2/authenticate?client_id=#{config.clientId}&redirect_url=#{config.redirectUrl}")
 
-  describe 'when in use', ->
+  describe.skip 'when in use', ->
     client = new BitcasaClient(config.clientId, config.secret, config.redirectUrl, logger, config.accessToken)
     it 'should restpect rate limits and get root with infinite drive', (done) ->
       expect(client.rateLimit.getTokensRemaining()).to.equal(180)
@@ -38,8 +38,31 @@ describe 'BitcasaClient instance', ->
     it.skip 'should get folders', (done) ->
       client.getFolders done
 
-    it.skip 'should be able to download files properly', (done)->
-      client.download('/m__k6DI5SGOHivKQlBuqyw/YnZAIPkZT2epFyagYiP9WQ/gi9LDgHzRRGydOxuFDCQsw','file.ext',0,1024*1024*10,1024*1024*10, done)
+    it 'should be able to download text files properly', (done)->
+      callback = (buf, start,end) ->
+        buffer = buf.slice(start,end)
+        expect(end-start).to.equal(322)
+        # expect( md5(buf.slice(start,end)) ).to.equal('599b9f55c2474fcea19e2147fe91e8ab')
+        expect( md5(buf.slice(start,end)) ).to.equal('599b9f55c2474fcea19e2147fe91e8ab')
+        done()
+      file = '/tmp/node-bitcasa/file.ext-0-321'
+      if fs.existsSync(file)
+        fs.unlink(file)
+      client.download('/Yz_YeHx0RLqIXWEQo6V8Eg/Dp4K3RLQTW2ilY1lo81Iww','file.ext',0,322,322,false, callback)
+
+    it 'should be able to download binary files properly', (done)->
+      client = new BitcasaClient(config.clientId, config.secret, config.redirectUrl, logger, config.accessToken, 1024*1024*2)
+
+      callback = (buf, start,end, data) ->
+        newbuf = buf.slice(start,end)
+        expect(end-start).to.equal(1378574)
+        expect(newbuf.length).to.equal(1378574)
+        expect( md5(newbuf) ).to.equal('4c898a28359a0aa8962adb0fc9661906')
+        done()
+      file = '/tmp/node-bitcasa/file.ext-0-1378573'
+      if fs.existsSync(file)
+        fs.unlink(file)
+      client.download('/m__k6DI5SGOHivKQlBuqyw/NJgui8PDQa-v51BIW1Pj3Q','file.ext',0,1378574,1378574,false, callback)
 
     it 'should only download one chunk', () ->
       fn = ->
@@ -49,14 +72,12 @@ describe 'FUSE filesystem', ->
   client = new BitcasaClient(config.clientId, config.secret, config.redirectUrl, config.accessToken, logger)
   it 'should return the right attribute', (done) ->
     cb = (err, status)->
-      console.log status
       done()
     client.folderTree.get('/').getAttr(cb)
 
   it 'given the wrong attr lookup, it should fail',  ->
     client = new BitcasaClient(config.clientId, config.secret, config.redirectUrl, config.accessToken)
     cb = (err, status)->
-      console.log status
       done()
     fn = ->
       client.folderTree.get('/..').getAttr(cb)

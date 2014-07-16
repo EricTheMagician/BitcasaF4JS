@@ -2,8 +2,8 @@ class BitcasaFile
   @fileAttr: 0o100777 #according to filesystem information, the 15th bit is set and the read and write are available for everyone
   constructor: (@client,@bitcasaPath, @name, @size, @ctime, @mtime) ->
 
-  download: (start=0,end=-1, cb) ->
-    @client.download(@bitcasaPath, @name, start,end,@size,cb)
+  download: (start,end, cb) ->
+    @client.download(@bitcasaPath, @name, start,end,@size,true,cb)
 
   getAttr: (cb)->
     attr =

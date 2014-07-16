@@ -13,12 +13,13 @@ else
   BitcasaFolder = module.exports.folder
 
 class BitcasaClient
-  constructor: (@id, @secret, @redirectUrl, logger, @accessToken = null, @chunkSize = 1024*1024, @cacheLocation = '/tmp/node-bitcasa') ->
+  constructor: (@id, @secret, @redirectUrl, @logger, @accessToken = null, @chunkSize = 1024*1024, @cacheLocation = '/tmp/node-bitcasa') ->
     @rateLimit = new RateLimiter 180, 'minute'
     now = (new Date).getTime()
     root = new BitcasaFolder(@,'/', 'root', now, now, [])
     @folderTree = new dict({'/': root})
     @bitcasaTree = new dict({'/': '/'})
+    @downloadTree = new dict()
     if @accessToken != null
       @setRest()
 
@@ -53,12 +54,13 @@ class BitcasaClient
   # callback should take 3 parameters:
   #   a buffer, where to start and where to end.
   #   the buffer is where the data is located
-  download: (path, name, start,end,size, recurse, cb ) ->
+  download: (path, name, start,end,maxSize, recurse, cb ) ->
     client = @
-
+    # console.log(name, path)
     #round the amount of bytes to be downloaded to multiple chunks
-    chunkStart = Math.floor(start/client.chunkSize) * client.chunkSize
-    chunkEnd = Math.min( Math.ceil(end/client.chunkSize) * client.chunkSize, size) #and make sure that it's not bigger than the actual file
+    chunkStart = Math.floor((start+1)/client.chunkSize) * client.chunkSize
+    end = Math.min(end,maxSize)
+    chunkEnd = Math.min( Math.ceil(end/client.chunkSize) * client.chunkSize, maxSize)-1 #and make sure that it's not bigger than the actual file
     chunks = (chunkEnd - chunkStart)/client.chunkSize
 
     if chunks > 1
@@ -66,39 +68,41 @@ class BitcasaClient
 
     #save locations
     location = pth.join(client.cacheLocation,"#{name}-#{chunkStart}-#{chunkEnd}")
-
+    client.logger.log('debug',"cache location: #{location}")
     #check if the data has been cached or not
     #otherwise, download from the web
 
     if fs.existsSync(location)
-      fd = fs.openSync(location)
-      size = end -start+1;
-      buffer = new Buffer(size)
-      data = fs.readSync(fd,buffer,0, size,0)
-      cb(buffer, start - chunkStart, end-chunkStart)
+      fd = fs.openSync(location,'r')
+      readSize = end - start + 1;
+      buffer = new Buffer(chunkEnd-chunkStart)
+      data = fs.readSync(fd,buffer,0,chunkEnd-chunkStart-1,0)
+      cb(buffer, 0, chunkEnd-chunkStart-1)
+      fs.closeSync(fd)
     else
       @rateLimit.removeTokens 1, (err, remainingRequests) ->
         if err
           t = ->
-            client.download(path, name, start,end,size, true,cb )
+            client.download(path, name, start,end,maxSize, true,cb )
           setTimeout(t, 60000)
         else
           args =
             "path":
               "path": path
             headers:
-              Range: "bytes=#{start}-#{Math.min(size,end)}"
+              Range: "bytes=#{chunkStart}-#{chunkEnd}"
           callback = (data,response) ->
             buf = response.client._buffer.pool
+            bufOffset = response.client._buffer.offset
 
-            fd = fs.createWriteStream(location)
-            fd.end(buf,'binary')
-            fd.on 'finish', ->
-              cb(buf, start - chunkStart, end - chunkStart)
+            writeBuffer = buf.slice(bufOffset - (chunkEnd-chunkStart + start - chunkStart)-1, bufOffset )
+            fs.writeFileSync(location, writeBuffer)
+            cb(buf, bufOffset - (chunkEnd-chunkStart + start - chunkStart)-1, bufOffset )
+
           client.client.methods.downloadChunk args,callback
-    if recurse
+    if recurse and  chunkEnd < maxSize
       callback = ->
-      client.download(path, name, start + client.chunkSize,end + client.chunkSize,size, false, callback )
+      # client.download(path, name, start + client.chunkSize,end + client.chunkSize,maxSize, false, callback )
 
   getFolders: (path..., cb) ->
     if path.length == 0
