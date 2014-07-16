@@ -11,7 +11,7 @@ logger = new (winston.Logger)({
   })
 
 #bitcasa client
-client = new BitcasaClient(config.clientId, config.secret, config.redirectUrl, config.accessToken, logger)
+client = new BitcasaClient(config.clientId, config.secret, config.redirectUrl, logger, config.accessToken)
 #get folder attributes in the background
 client.getFolders()
 
