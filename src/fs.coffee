@@ -13,7 +13,7 @@ logger = new (winston.Logger)({
   })
 
 #bitcasa client
-client = new BitcasaClient(config.clientId, config.secret, config.redirectUrl, logger, config.accessToken)
+client = new BitcasaClient(config.clientId, config.secret, config.redirectUrl, logger, config.accessToken, config.chunkSize, config.cacheLocation)
 #get folder attributes in the background
 client.getFolders()
 
@@ -70,18 +70,17 @@ read = (path, offset, len, buf, fh, cb) ->
     chunkStart = Math.floor(offset/client.chunkSize) * client.chunkSize
     chunkEnd = Math.min( Math.ceil((offset+len)/client.chunkSize) * client.chunkSize, file.size) #and make sure that it's not bigger than the actual file
     if downloadTree.has("#{path}-#{chunkStart}")
-      callback = ->
+      fn = ->
         read(path, offset, len, buf, fh, cb)
-      setTimeout(fn, 500)
+      setTimeout(fn, 50)
+      return
     else
       downloadTree.set("#{path}-#{chunkStart}", 1)
 
 
     callback = (dataBuf,dataStart,dataEnd) ->
 
-      logger.log("debug", "read callback #{dataStart}-#{dataEnd}")
-      dataBuf.copy(buf,0,dataStart,dataEnd);
-      logger.log("debug", "read callback #{dataStart}-#{dataEnd}")
+      dataBuf.copy(buf,0,dataStart,dataEnd+1);
       downloadTree.delete("#{path}-#{chunkStart}")
       cb(dataEnd-dataStart+1);
 
@@ -154,6 +153,7 @@ readdir = (path, cb) ->
     err = -errnoMap.ENOENT
 
   cb( err, names );
+destroy = (cb) ->
 
 handlers =
   getattr: getattr,
@@ -173,12 +173,12 @@ handlers =
   # mkdir: mkdir,
   # rmdir: rmdir,
   # init: init,
-  # destroy: destroy
+  destroy: destroy
 
 try
   console.log 'attempting to start f4js'
   opts = ['-o', 'allow_other']
-  f4js.start(config.mountPoint, handlers, true,opts);
+  f4js.start(config.mountPoint, handlers, false,opts);
   logger.log('debug', "mount point: #{config.mountPoint}")
 catch e
   console.log("Exception when starting file system: #{e}")

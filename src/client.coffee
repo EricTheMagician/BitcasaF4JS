@@ -56,7 +56,6 @@ class BitcasaClient
   #   the buffer is where the data is located
   download: (path, name, start,end,maxSize, recurse, cb ) ->
     client = @
-    # console.log(name, path)
     #round the amount of bytes to be downloaded to multiple chunks
     chunkStart = Math.floor((start+1)/client.chunkSize) * client.chunkSize
     end = Math.min(end,maxSize)
@@ -73,11 +72,12 @@ class BitcasaClient
     #otherwise, download from the web
 
     if fs.existsSync(location)
+      readSize = end - start;
       fd = fs.openSync(location,'r')
-      readSize = end - start + 1;
-      buffer = new Buffer(chunkEnd-chunkStart)
-      data = fs.readSync(fd,buffer,0,chunkEnd-chunkStart-1,0)
-      cb(buffer, 0, chunkEnd-chunkStart-1)
+      buffer = new Buffer(readSize+1)
+      bytesRead = fs.readSync(fd,buffer,0,readSize+1, start-chunkStart)
+      console.log "#{start}-#{end} -- #{start-chunkStart}-#{start-chunkStart + readSize} -- bytes read, #{bytesRead}"
+      cb(buffer, 0, readSize)
       fs.closeSync(fd)
     else
       @rateLimit.removeTokens 1, (err, remainingRequests) ->

@@ -26,7 +26,7 @@ describe 'BitcasaClient instance', ->
       client = new BitcasaClient config.clientId, config.secret, config.redirectUrl, logger,config.accessToken
       expect(client.loginUrl()).to.equal("https://developer.api.bitcasa.com/v1/oauth2/authenticate?client_id=#{config.clientId}&redirect_url=#{config.redirectUrl}")
 
-  describe.skip 'when in use', ->
+  describe 'when in use', ->
     client = new BitcasaClient(config.clientId, config.secret, config.redirectUrl, logger, config.accessToken)
     it 'should restpect rate limits and get root with infinite drive', (done) ->
       expect(client.rateLimit.getTokensRemaining()).to.equal(180)
@@ -54,14 +54,14 @@ describe 'BitcasaClient instance', ->
       client = new BitcasaClient(config.clientId, config.secret, config.redirectUrl, logger, config.accessToken, 1024*1024*2)
 
       callback = (buf, start,end, data) ->
-        newbuf = buf.slice(start,end)
+        newbuf = buf.slice( start,end)
         expect(end-start).to.equal(1378574)
         expect(newbuf.length).to.equal(1378574)
         expect( md5(newbuf) ).to.equal('4c898a28359a0aa8962adb0fc9661906')
         done()
-      file = '/tmp/node-bitcasa/file.ext-0-1378573'
-      if fs.existsSync(file)
-        fs.unlink(file)
+      # file = '/tmp/node-bitcasa/file.ext-0-1378573'
+      # if fs.existsSync(file)
+      #   fs.unlink(file)
       client.download('/m__k6DI5SGOHivKQlBuqyw/NJgui8PDQa-v51BIW1Pj3Q','file.ext',0,1378574,1378574,false, callback)
 
     it 'should only download one chunk', () ->
