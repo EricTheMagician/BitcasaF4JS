@@ -38,7 +38,7 @@ class BitcasaFolder
   	    else
           client.folderTree.set realPath, new BitcasaFile(client, o.path, o.name,o.size,  new Date(o.ctime), new Date(o.mtime))
     catch error
-      console.log 'data was likely not a json variable'
+      console.log 'data was likely not a json variable', error
     if typeof(cb) == typeof(Function)
       cb()
   getAttr: (cb)->
