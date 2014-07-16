@@ -65,7 +65,7 @@ class BitcasaClient
       throw new Error('number of chunks requested needs to be 1')
 
     #save locations
-    locations = pth.join(client.cacheLocation,"#{name}-#{chunkStart}-#{chunkEnd}")
+    location = pth.join(client.cacheLocation,"#{name}-#{chunkStart}-#{chunkEnd}")
 
     #check if the data has been cached or not
     #otherwise, download from the web
@@ -77,7 +77,7 @@ class BitcasaClient
       data = fs.readSync(fd,buffer,0, size,0)
       cb(buffer, start - chunkStart, end-chunkStart)
     else
-      @rateLimit.removeToken 1, (err, remainingRequests) ->
+      @rateLimit.removeTokens 1, (err, remainingRequests) ->
         if err
           t = ->
             client.download(path, name, start,end,size, true,cb )

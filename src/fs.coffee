@@ -2,6 +2,8 @@ config = require('./config.json')
 f4js = require 'fuse4js'
 winston = require 'winston'
 BitcasaClient = module.exports.client
+BitcasaFolder = module.exports.folder
+BitcasaFile = module.exports.file
 
 logger = new (winston.Logger)({
     transports: [
@@ -60,7 +62,7 @@ chmod = (path,mod, cb) ->
 #  *     A positive value represents the number of bytes actually read.
 #  */
 read = (path, offset, len, buf, fh, cb) ->
-  logger.log('debug', "reading file #{path}, offset #{offset}, fh #{fh}")
+  logger.log('debug', "reading file #{path}")
   folderTree =  client.folderTree
   if folderTree.has(path)
     callback = (dataBuf,dataStart,dataEnd)->
@@ -109,16 +111,42 @@ statfs= (cb) ->
         namemax: 1000000
     })
 
+# /*
+#  * Handler for the readdir() system call.
+#  * path: the path to the file
+#  * cb: a callback of the form cb(err, names), where err is the Posix return code
+#  *     and names is the result in the form of an array of file names (when err === 0).
+#  */
+readdir = (path, cb) ->
+  logger.log('debug', "reading dir #{path}")
+  folderTree =  client.folderTree
+
+  names = []
+
+  if folderTree.has(path)
+    object = folderTree.get(path)
+    if object instanceof BitcasaFile
+      err = -errnoMap.EINVAL
+    else if object instanceof BitcasaFolder
+      err = 0
+      names = object.children
+    else
+      err = -errnoMap.ENOENT
+  else
+    err = -errnoMap.ENOENT
+
+  cb( err, names );
+
 handlers =
   getattr: getattr,
   readdir: readdir,
   init: init,
   statfs: statfs
-  readlink: readlink,
+  # readlink: readlink,
   chmod: chmod,
   open:open,
   flush: flush
-  # read: read,
+  read: read,
   # write: write,
   # release: release,
   # create: create,
