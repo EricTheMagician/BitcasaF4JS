@@ -13,7 +13,7 @@ logger = new (winston.Logger)({
   })
 
 #bitcasa client
-client = new BitcasaClient(config.clientId, config.secret, config.redirectUrl, logger, config.accessToken, config.chunkSize, config.cacheLocation)
+client = new BitcasaClient(config.clientId, config.secret, config.redirectUrl, logger, config.accessToken, config.chunkSize, config.cacheLocation, config.chunkSize, config.advancedChunks, config.cacheLocation)
 #get folder attributes in the background
 client.getFolders()
 
@@ -140,7 +140,6 @@ statfs= (cb) ->
 readdir = (path, cb) ->
   logger.log('silly', "reading dir #{path}")
   folderTree =  client.folderTree
-
   names = []
 
   if folderTree.has(path)
@@ -150,6 +149,7 @@ readdir = (path, cb) ->
     else if object instanceof BitcasaFolder
       err = 0
       names = object.children
+      client.getFolders object.bitcasaPath, ->
     else
       err = -errnoMap.ENOENT
   else
