@@ -16,7 +16,8 @@
     "node-rest-client": "~1.0.0",
     "fuse4js": "~0.1.9",
     "winston": "~0.7.3",
-    "memoizee": "~0.3.5"
+    "memoizee": "~0.3.5",
+    "coffee-script": "~1.7.1"
   },
   "devDependencies": {
     "MD5": "~1.2.1",
@@ -25,7 +26,7 @@
     "grunt-coffee-jshint": "~0.2.1",
     "grunt-contrib-watch": "~0.6.1",
     "chai": "~1.9.1",
-    "grunt-mocha-test": "~0.11.0",
+    "grunt-mocha-test": "~0.11.0"
   },
   "engine": "node >= 0.10.0"
 }
