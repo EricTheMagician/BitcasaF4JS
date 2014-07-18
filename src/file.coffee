@@ -12,7 +12,6 @@ class BitcasaFile
       nlink: 1,
       mtime: @mtime,
       ctime: @ctime
-    console.log "#{@name} #{attr}"
     cb(0,attr)
 
 

@@ -7,7 +7,7 @@ BitcasaFile = module.exports.file
 
 logger = new (winston.Logger)({
     transports: [
-      new (winston.transports.Console)({ level: 'info' }),
+      new (winston.transports.Console)({ level: 'debug' }),
       new (winston.transports.File)({ filename: '/tmp/somefile.log', level:'debug' })
     ]
   })
@@ -60,29 +60,28 @@ chmod = (path,mod, cb) ->
 #  *     A positive value represents the number of bytes actually read.
 #  */
 read = (path, offset, len, buf, fh, cb) ->
-  logger.log('debug', "reading file #{path}")
+  logger.log('silly', "reading file #{path}")
   folderTree =  client.folderTree
-  downloadTree = client.downloadTree
   if folderTree.has(path)
     file = client.folderTree.get(path)
 
     #check to see if part of the file is being downloaded
     chunkStart = Math.floor(offset/client.chunkSize) * client.chunkSize
     chunkEnd = Math.min( Math.ceil((offset+len)/client.chunkSize) * client.chunkSize, file.size) #and make sure that it's not bigger than the actual file
-    if downloadTree.has("#{path}-#{chunkStart}")
+    if client.downloadTree.has("#{path}-#{chunkStart}")
       fn = ->
         read(path, offset, len, buf, fh, cb)
-      setTimeout(fn, 50)
+      setTimeout(fn, 200)
       return
     else
-      downloadTree.set("#{path}-#{chunkStart}", 1)
+      client.downloadTree.set("#{path}-#{chunkStart}", 1)
 
 
     callback = (dataBuf,dataStart,dataEnd) ->
 
-      dataBuf.copy(buf,0,dataStart,dataEnd+1);
-      downloadTree.delete("#{path}-#{chunkStart}")
-      cb(dataEnd-dataStart+1);
+      dataBuf.copy(buf,0,dataStart,dataEnd);
+      cb(dataEnd-dataStart);
+      client.downloadTree.delete("#{path}-#{chunkStart}")
 
 
     file.download(offset, offset+len-1,callback)
@@ -100,14 +99,14 @@ init = (cb) ->
 open = (path, flags, cb) ->
   err = 0 # assume success
   folderTree =  client.folderTree
-  logger.log('debug', "opening file #{path}, #{flags},  exists #{folderTree.has(path)}")
+  logger.log('silly', "opening file #{path}, #{flags},  exists #{folderTree.has(path)}")
   if folderTree.has(path)
     cb(0,1)
   else
     cb(errnoMap.ENOENT)# // we don't return a file handle, so fuse4js will initialize it to 0
 
 flush = (buf, cb) ->
-  logger.log("debug", "#{typeof buf}")
+  logger.log("silly", "#{typeof buf}")
   cb(0)
 
 release =  (path, fh, cb) ->
@@ -135,7 +134,7 @@ statfs= (cb) ->
 #  *     and names is the result in the form of an array of file names (when err === 0).
 #  */
 readdir = (path, cb) ->
-  logger.log('debug', "reading dir #{path}")
+  logger.log('silly', "reading dir #{path}")
   folderTree =  client.folderTree
 
   names = []
@@ -179,6 +178,6 @@ try
   console.log 'attempting to start f4js'
   opts = ['-o', 'allow_other']
   f4js.start(config.mountPoint, handlers, false,opts);
-  logger.log('debug', "mount point: #{config.mountPoint}")
+  logger.log('info', "mount point: #{config.mountPoint}")
 catch e
   console.log("Exception when starting file system: #{e}")

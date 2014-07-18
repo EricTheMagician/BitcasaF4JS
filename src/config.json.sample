@@ -4,6 +4,6 @@
   "redirectUrl": "can be left blank",
   "accessToken": "",
   "mountPoint": "",
-  "chunkSize": 1024*1024,
+  "chunkSize": 8388608,
   "cacheLocation": ""
 }
