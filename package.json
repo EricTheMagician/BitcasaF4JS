@@ -6,7 +6,7 @@
     "name": "Eric Yen",
     "email": "eric@ericyen.com"
   },
-  "files": ["src"],  
+  "files": ["src"],
   "homepage": "https://github.com/thejinx0r/BitcasaF4JS",
   "dependencies": {
     "fibers": "1.0.1",
@@ -16,7 +16,7 @@
     "limiter": "~1.0.5",
     "node-rest-client": "~1.0.0",
     "fuse4js": "~0.1.9",
-    "winston": "~0.7.3",
+    "winston": "~0.7.3"
   },
   "devDependencies": {
     "MD5": "~1.2.1",
