@@ -45,10 +45,7 @@ describe 'BitcasaClient instance', ->
         # expect( md5(buf.slice(start,end)) ).to.equal('599b9f55c2474fcea19e2147fe91e8ab')
         expect( md5(buf.slice(start,end)) ).to.equal('599b9f55c2474fcea19e2147fe91e8ab')
         done()
-      file = '/tmp/node-bitcasa/file.ext-0-321'
-      if fs.existsSync(file)
-        fs.unlink(file)
-      client.download('/Yz_YeHx0RLqIXWEQo6V8Eg/Dp4K3RLQTW2ilY1lo81Iww','file.ext',0,322,322,false, callback)
+      client.download('/Yz_YeHx0RLqIXWEQo6V8Eg/Dp4K3RLQTW2ilY1lo81Iww','file.ext',0,321,322,false, callback)
 
     it 'should be able to download binary files properly', (done)->
       client = new BitcasaClient(config.clientId, config.secret, config.redirectUrl, logger, config.accessToken, 1024*1024*2)
@@ -62,12 +59,13 @@ describe 'BitcasaClient instance', ->
       # file = '/tmp/node-bitcasa/file.ext-0-1378573'
       # if fs.existsSync(file)
       #   fs.unlink(file)
-      client.download('/m__k6DI5SGOHivKQlBuqyw/NJgui8PDQa-v51BIW1Pj3Q','file.ext',0,1378574,1378574,false, callback)
+      client.download('/m__k6DI5SGOHivKQlBuqyw/NJgui8PDQa-v51BIW1Pj3Q','file.ext',0,1378573,1378574,false, callback)
 
-    it 'should only download one chunk', () ->
-      fn = ->
-        client.download('/m__k6DI5SGOHivKQlBuqyw/YnZAIPkZT2epFyagYiP9WQ/gi9LDgHzRRGydOxuFDCQsw','file.ext',config.chunkSize-1,config.chunkSize+1,1024*1024*10, callback)
-      expect( fn ).to.throw( Error)
+    it 'should download large files properly', () ->
+      buffer = new Buffer 69695838
+      callback = (dataBuf, start, end)->
+        data
+      # client.download('/BqRTHzyOSm2PVYt02cTNCw/HzERXLW7TkOvT7ld8NF_mw')
 describe 'FUSE filesystem', ->
   client = new BitcasaClient(config.clientId, config.secret, config.redirectUrl, config.accessToken, logger)
   it 'should return the right attribute', (done) ->

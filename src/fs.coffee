@@ -65,24 +65,28 @@ read = (path, offset, len, buf, fh, cb) ->
   if folderTree.has(path)
     file = client.folderTree.get(path)
 
-    #check to see if part of the file is being downloaded
-    chunkStart = Math.floor(offset/client.chunkSize) * client.chunkSize
-    chunkEnd = Math.min( Math.ceil((offset+len)/client.chunkSize) * client.chunkSize, file.size) #and make sure that it's not bigger than the actual file
+    #check to see if part of the file is being downloaded or in use
+    chunkStart = Math.floor((offset)/client.chunkSize) * client.chunkSize
+    end = Math.min(offset + len - 1, file.size )
+    chunkEnd = Math.min( Math.ceil(end/client.chunkSize) * client.chunkSize, file.size)-1 #and make sure that it's not bigger than the actual file
     if client.downloadTree.has("#{path}-#{chunkStart}")
       fn = ->
         read(path, offset, len, buf, fh, cb)
-      setTimeout(fn, 200)
+      setTimeout(fn, 50)
       return
     else
       client.downloadTree.set("#{path}-#{chunkStart}", 1)
 
 
+
     callback = (dataBuf,dataStart,dataEnd) ->
 
-      dataBuf.copy(buf,0,dataStart,dataEnd);
-      cb(dataEnd-dataStart);
-      client.downloadTree.delete("#{path}-#{chunkStart}")
-
+      try
+        dataBuf.copy(buf,0,dataStart,dataEnd);
+        cb(dataEnd-dataStart + 1);
+        client.downloadTree.delete("#{path}-#{chunkStart}")
+      catch error
+        console.log("failed reading:", error)
 
     file.download(offset, offset+len-1,callback)
 

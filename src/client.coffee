@@ -57,7 +57,7 @@ class BitcasaClient
   download: (path, name, start,end,maxSize, recurse, cb ) ->
     client = @
     #round the amount of bytes to be downloaded to multiple chunks
-    chunkStart = Math.floor((start+1)/client.chunkSize) * client.chunkSize
+    chunkStart = Math.floor((start)/client.chunkSize) * client.chunkSize
     end = Math.min(end,maxSize)
     chunkEnd = Math.min( Math.ceil(end/client.chunkSize) * client.chunkSize, maxSize)-1 #and make sure that it's not bigger than the actual file
     chunks = (chunkEnd - chunkStart)/client.chunkSize
@@ -67,21 +67,21 @@ class BitcasaClient
 
     #save locations
     location = pth.join(client.cacheLocation,"#{name}-#{chunkStart}-#{chunkEnd}")
-    client.logger.log('debug',"cache location: #{location}")
+    client.logger.log('silly',"cache location: #{location}")
     #check if the data has been cached or not
     #otherwise, download from the web
 
     if fs.existsSync(location)
       readSize = end - start;
-      fd = fs.openSync(location,'r')
       buffer = new Buffer(readSize+1)
+      fd = fs.openSync(location,'r')
       bytesRead = fs.readSync(fd,buffer,0,readSize+1, start-chunkStart)
-      console.log "#{start}-#{end} -- #{start-chunkStart}-#{start-chunkStart + readSize} -- bytes read, #{bytesRead}"
-      cb(buffer, 0, readSize)
       fs.closeSync(fd)
+      cb(buffer, 0, readSize+1)
     else
       @rateLimit.removeTokens 1, (err, remainingRequests) ->
         if err
+          console.log("There was an error with rate limit:",err)
           t = ->
             client.download(path, name, start,end,maxSize, true,cb )
           setTimeout(t, 60000)
@@ -92,26 +92,37 @@ class BitcasaClient
             headers:
               Range: "bytes=#{chunkStart}-#{chunkEnd}"
           callback = (data,response) ->
-            buf = response.client._buffer.pool
-            bufOffset = response.client._buffer.offset
-
-            writeBuffer = buf.slice(bufOffset - (chunkEnd-chunkStart + start - chunkStart)-1, bufOffset )
-            fs.writeFileSync(location, writeBuffer)
-            cb(buf, bufOffset - (chunkEnd-chunkStart + start - chunkStart)-1, bufOffset )
-
+            if data.length == 14 and data.toString() == "invalid range"
+              client.download(path, name, start,end,maxSize, recurse, cb )
+            else
+              fs.writeFileSync(location,data)
+              cb(data, start - chunkStart, end+1 - chunkStart )
           client.client.methods.downloadChunk args,callback
-    if recurse and  chunkEnd < maxSize
-      callback = ->
-      # client.download(path, name, start + client.chunkSize,end + client.chunkSize,maxSize, false, callback )
+
+      if recurse and  (chunkEnd + 1) < maxSize
+        parentPath = client.bitcasaTree.get(pth.dirname(path))
+        # console.log "path: #{path} -- parentPath - #{parentPath} - name: #{name}"
+        filePath = pth.join(parentPath,name)
+        unless client.downloadTree.has("#{filePath}-#{chunkStart+client.chunkSize}")
+          client.downloadTree.set("#{filePath}-#{chunkStart+client.chunkSize}",1)
+          callback = ->
+              client.downloadTree.delete("#{filePath}-#{chunkStart + client.chunkSize}")
+          client.download(path, name, start + client.chunkSize,chunkEnd + 1 + client.chunkSize,maxSize, false, callback )
+      if recurse and  (chunkEnd + 1 + client.chunkSize) < maxSize
+        parentPath = client.bitcasaTree.get(pth.dirname(path))
+        filePath = pth.join(parentPath,name)
+        unless client.downloadTree.has("#{filePath}-#{chunkStart + 2 *client.chunkSize}")
+          client.downloadTree.set("#{filePath}-#{chunkStart + 2*client.chunkSize}",1)
+          callback = ->
+            client.downloadTree.delete("#{filePath}-#{chunkStart + 2 * client.chunkSize}")
+          client.download(path, name, chunkStart + client.chunkSize*2,chunkEnd + 1 + client.chunkSize*2,maxSize, false, callback )
 
   getFolders: (path..., cb) ->
     if path.length == 0
       path = '/'
-    console.log path
     client = @
     parent = client.folderTree.get(path)
     children = parent.children
-    console.log 'children', children
     if children.length == 0 and parent.name == 'root'
       callback = ->
         client.getFolders(cb)
