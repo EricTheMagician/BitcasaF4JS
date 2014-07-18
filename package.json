@@ -11,10 +11,7 @@
   ],
   "homepage": "https://github.com/thejinx0r/BitcasaF4JS",
   "dependencies": {
-    "fibers": "1.0.1",
-    "queue": "~2.2.0",
     "dict": "~1.4.0",
-    "rate-limit": "~0.1.1",
     "limiter": "~1.0.5",
     "node-rest-client": "~1.0.0",
     "fuse4js": "~0.1.9",
@@ -29,7 +26,6 @@
     "grunt-contrib-watch": "~0.6.1",
     "chai": "~1.9.1",
     "grunt-mocha-test": "~0.11.0",
-    "md5": "~1.0.0"
   },
   "engine": "node >= 0.10.0"
 }
