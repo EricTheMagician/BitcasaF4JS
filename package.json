@@ -1,7 +1,13 @@
 {
-  "name": "BitcasaFS",
+  "name": "BitcasaF4JS",
+  "version": "0.1.1",
   "description": "Bitcasa Fuse filesystem written in node",
-  "author": "Eric Yen <eric@ericyen.com>",
+  "author": {
+    "name": "Eric Yen",
+    "email": "eric@ericyen.com"
+  },
+  "files": ["src"],  
+  "homepage": "https://github.com/thejinx0r/BitcasaF4JS",
   "dependencies": {
     "fibers": "1.0.1",
     "queue": "~2.2.0",
@@ -11,9 +17,9 @@
     "node-rest-client": "~1.0.0",
     "fuse4js": "~0.1.9",
     "winston": "~0.7.3",
-    "MD5": "~1.2.1"
   },
   "devDependencies": {
+    "MD5": "~1.2.1",
     "grunt": "~0.4.5",
     "grunt-contrib-coffee": "~0.10.1",
     "grunt-coffee-jshint": "~0.2.1",
