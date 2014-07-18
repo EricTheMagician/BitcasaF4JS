@@ -45,7 +45,7 @@ describe 'BitcasaClient instance', ->
         # expect( md5(buf.slice(start,end)) ).to.equal('599b9f55c2474fcea19e2147fe91e8ab')
         expect( md5(buf.slice(start,end)) ).to.equal('599b9f55c2474fcea19e2147fe91e8ab')
         done()
-      client.download('/Yz_YeHx0RLqIXWEQo6V8Eg/Dp4K3RLQTW2ilY1lo81Iww','file.ext',0,321,322,false, callback)
+      client.download('/Yz_YeHx0RLqIXWEQo6V8Eg/Dp4K3RLQTW2ilY1lo81Iww','file.ext',0,321,322, true, callback)
 
     it 'should be able to download binary files properly', (done)->
       client = new BitcasaClient(config.clientId, config.secret, config.redirectUrl, logger, config.accessToken, 1024*1024*2)
@@ -59,7 +59,7 @@ describe 'BitcasaClient instance', ->
       # file = '/tmp/node-bitcasa/file.ext-0-1378573'
       # if fs.existsSync(file)
       #   fs.unlink(file)
-      client.download('/m__k6DI5SGOHivKQlBuqyw/NJgui8PDQa-v51BIW1Pj3Q','file.ext',0,1378573,1378574,false, callback)
+      client.download('/m__k6DI5SGOHivKQlBuqyw/NJgui8PDQa-v51BIW1Pj3Q','file.ext',0,1378573,1378574, true, callback)
 
     it 'should download large files properly', () ->
       buffer = new Buffer 69695838

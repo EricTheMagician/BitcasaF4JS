@@ -5,5 +5,5 @@ This is a simple (incomplete) filesystem written in NodeJS to mount Bitcasa as a
 
 ##Todo
 1. ~~Fix large file downloading~~
-2. Implement downloading multiple chunks
+2. ~~Implement parallel downloading of multiple chunks~~
 3. Implement file uploads

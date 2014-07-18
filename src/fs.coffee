@@ -7,7 +7,7 @@ BitcasaFile = module.exports.file
 
 logger = new (winston.Logger)({
     transports: [
-      new (winston.transports.Console)({ level: 'debug' }),
+      new (winston.transports.Console)({ level: 'info' }),
       new (winston.transports.File)({ filename: '/tmp/somefile.log', level:'debug' })
     ]
   })
@@ -72,7 +72,7 @@ read = (path, offset, len, buf, fh, cb) ->
     if client.downloadTree.has("#{path}-#{chunkStart}")
       fn = ->
         read(path, offset, len, buf, fh, cb)
-      setTimeout(fn, 50)
+      setTimeout(fn, 20)
       return
     else
       client.downloadTree.set("#{path}-#{chunkStart}", 1)

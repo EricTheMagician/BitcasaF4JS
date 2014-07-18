@@ -4,7 +4,7 @@ Client = require('node-rest-client').Client;
 dict = require 'dict'
 pth = require 'path'
 fs = require 'fs'
-
+memoize = require 'memoizee'
 #for mocha testing
 if Object.keys( module.exports ).length == 0
   r = require './folder.coffee'
@@ -12,8 +12,9 @@ if Object.keys( module.exports ).length == 0
 else
   BitcasaFolder = module.exports.folder
 
+existsMemoized = memoize(fs.existsSync, {maxAge:500})
 class BitcasaClient
-  constructor: (@id, @secret, @redirectUrl, @logger, @accessToken = null, @chunkSize = 1024*1024, @cacheLocation = '/tmp/node-bitcasa') ->
+  constructor: (@id, @secret, @redirectUrl, @logger, @accessToken = null, @chunkSize = 1024*1024, @advancedChunks = 10, @cacheLocation = '/tmp/node-bitcasa') ->
     @rateLimit = new RateLimiter 180, 'minute'
     now = (new Date).getTime()
     root = new BitcasaFolder(@,'/', 'root', now, now, [])
@@ -71,7 +72,20 @@ class BitcasaClient
     #check if the data has been cached or not
     #otherwise, download from the web
 
-    if fs.existsSync(location) and recurse
+    recursive = (rStart, rEnd) ->
+      if (rEnd + 1) < maxSize
+        parentPath = client.bitcasaTree.get(pth.dirname(path))
+        filePath = pth.join(parentPath,name)
+        cache = pth.join(client.cacheLocation,"#{name}-#{rStart}-#{rEnd-1}")
+        unless existsMemoized(cache)
+          unless client.downloadTree.has("#{filePath}-#{rStart}")
+            client.logger.log("debug", "#{filePath}-#{rStart}-#{rEnd - 1} -- exists: - #{existsMemoized("#{filePath}-#{rStart}")} - has: #{client.downloadTree.has("#{filePath}-#{rStart}")} - recursing at #{chunkStart} - (#{rStart}-#{rEnd})")
+            client.downloadTree.set("#{filePath}-#{rStart}",1)
+            callback = ->
+                client.downloadTree.delete("#{filePath}-#{rStart}")
+            client.download(path, name, rStart,rEnd,maxSize, false, callback )
+
+    if existsMemoized(location)
       readSize = end - start;
       buffer = new Buffer(readSize+1)
       fd = fs.openSync(location,'r')
@@ -79,6 +93,7 @@ class BitcasaClient
       fs.closeSync(fd)
       cb(buffer, 0, readSize+1)
     else
+      client.logger.log("info", "#{name} - downloading #{chunkStart}-#{chunkEnd}")
       @rateLimit.removeTokens 1, (err, remainingRequests) ->
         if err
           console.log("There was an error with rate limit:",err)
@@ -92,33 +107,15 @@ class BitcasaClient
             headers:
               Range: "bytes=#{chunkStart}-#{chunkEnd}"
           callback = (data,response) ->
-            client.logger.log("debug", "Downloaded #{name} - (#{chunkStart}-#{chunkEnd}) - got bytes:#{data.length}")
+            client.logger.log("debug", "downloaded: #{location} - #{chunkEnd-chunkStart}")
             if data.length == 14 and data.toString() == "invalid range"
               client.download(path, name, start,end,maxSize, recurse, cb )
             else
               fs.writeFileSync(location,data)
               cb(data, start - chunkStart, end+1 - chunkStart )
           client.client.methods.downloadChunk args,callback
-
-    if recurse and  (chunkEnd + 1) < maxSize
-      parentPath = client.bitcasaTree.get(pth.dirname(path))
-      # console.log "path: #{path} -- parentPath - #{parentPath} - name: #{name}"
-      filePath = pth.join(parentPath,name)
-      unless client.downloadTree.has("#{filePath}-#{chunkStart+client.chunkSize}")
-        client.logger.log("debug", "recursing 1 at #{chunkStart}")
-        client.downloadTree.set("#{filePath}-#{chunkStart+client.chunkSize}",1)
-        callback = ->
-            client.downloadTree.delete("#{filePath}-#{chunkStart + client.chunkSize}")
-        client.download(path, name, start + client.chunkSize,chunkEnd + 1 + client.chunkSize,maxSize, false, callback )
-    if recurse and  (chunkEnd + 1 + client.chunkSize) < maxSize
-      parentPath = client.bitcasaTree.get(pth.dirname(path))
-      filePath = pth.join(parentPath,name)
-      unless client.downloadTree.has("#{filePath}-#{chunkStart + 2 *client.chunkSize}")
-        client.logger.log("debug", "recursing 2 at #{chunkStart}")
-        client.downloadTree.set("#{filePath}-#{chunkStart + 2*client.chunkSize}",1)
-        callback = ->
-          client.downloadTree.delete("#{filePath}-#{chunkStart + 2 * client.chunkSize}")
-        client.download(path, name, chunkStart + client.chunkSize*2,chunkEnd + 1 + client.chunkSize*2,maxSize, false, callback )
+    if recurse
+      recursive(chunkStart + num*client.chunkSize, chunkEnd + 1 + num*client.chunkSize)  for num in [1..client.advancedChunks]
 
   getFolders: (path..., cb) ->
     if path.length == 0
