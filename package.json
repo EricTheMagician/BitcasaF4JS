@@ -13,7 +13,7 @@
   "dependencies": {
     "dict": "~1.4.0",
     "limiter": "~1.0.5",
-    "node-rest-client": "~1.0.0",
+    "node-rest-client": "thejinx0r/node-rest-client",
     "fuse4js": "~0.1.9",
     "winston": "~0.7.3",
     "memoizee": "~0.3.5",
