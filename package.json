@@ -6,6 +6,11 @@
     "name": "Eric Yen",
     "email": "eric@ericyen.com"
   },
+  "repository" :
+    {
+      "type" : "git",
+      "url" : "http://github.com/thejinx0r/BitcasaF4JS"
+    },
   "files": [
     "src"
   ],
