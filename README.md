@@ -10,6 +10,7 @@ Linux / MacOSX with FUSE
 Fuse is not compatible with Windows.
 
 NodeJS:
+
 1. npm install -g grunt-cli
 2. git clone https://github.com/thejinx0r/BitcasaF4JS.git
 3. cd BitcasaF4JS
