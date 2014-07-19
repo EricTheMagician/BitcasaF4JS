@@ -34,14 +34,6 @@ getattr = (path, cb) ->
     return client.folderTree.get(path).getAttr(callback)
   else
     return cb(-errnoMap.ENOENT)
-readdir = (path, cb) ->
-  logger.log('debug', "readdir #{path}")
-  client.getFolders path
-  folderTree =  client.folderTree
-  if folderTree.has(path)
-    return cb(0,client.folderTree.get(path).children)
-  else
-    return cb(-errnoMap.ENOENT)
 
 readlink = (path,cb ) ->
   return cb(-errnoMap.ENOENT)
@@ -149,7 +141,7 @@ readdir = (path, cb) ->
     else if object instanceof BitcasaFolder
       err = 0
       names = object.children
-      client.getFolders object.bitcasaPath, ->
+      client.getFolders( path )
     else
       err = -errnoMap.ENOENT
   else

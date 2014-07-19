@@ -117,25 +117,16 @@ class BitcasaClient
     if recurse
       recursive(chunkStart + num*client.chunkSize, chunkEnd + 1 + num*client.chunkSize)  for num in [1..client.advancedChunks]
 
-  getFolders: (path..., cb) ->
-    if path.length == 0
-      path = '/'
+  getFolders: (path, cb) ->
     client = @
-    parent = client.folderTree.get(path)
-    children = parent.children
-    if children.length == 0 and parent.name == 'root'
-      callback = ->
-        client.getFolders(cb)
-      @getRoot callback
-    else
-      for child in children
-        object = client.folderTree.get(pth.join(path,child))
-        if object instanceof BitcasaFolder
-          @rateLimit.removeTokens 1, (err,remainingRequests) ->
-            callback = (data,response) ->
-              BitcasaFolder.parseFolder(data,response, client,cb)
-            if not err
-              url = "#{BASEURL}/folders#{object.bitcasaPath}?access_token=#{client.accessToken}"
-              client.client.get(url, callback)
+
+    object = client.folderTree.get(path)
+    if object instanceof BitcasaFolder
+      @rateLimit.removeTokens 1, (err,remainingRequests) ->
+        callback = (data,response) ->
+          BitcasaFolder.parseFolder(data,response, client,cb)
+        if not err
+          url = "#{BASEURL}/folders#{object.bitcasaPath}?access_token=#{client.accessToken}"
+          client.client.get(url, callback)
 
 module.exports.client = BitcasaClient

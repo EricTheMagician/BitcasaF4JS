@@ -30,13 +30,12 @@ describe 'BitcasaClient instance', ->
     client = new BitcasaClient(config.clientId, config.secret, config.redirectUrl, logger, config.accessToken)
     it 'should restpect rate limits and get root with infinite drive', (done) ->
       expect(client.rateLimit.getTokensRemaining()).to.equal(180)
-      client.getRoot ()->
-        # console.log client.folderTree.get('/')
-        expect(client.folderTree.get('/').children).to.include.members(['Bitcasa Infinite Drive'])
-        done()
+      client.getFolders "/", ->
+        fn = ->
+          expect(client.folderTree.get('/').children).to.include.members(['Bitcasa Infinite Drive'])
+          done()
+        setTimeout(fn,1500)
       expect(client.rateLimit.getTokensRemaining()).to.be.closeTo(179,0.5)
-    it.skip 'should get folders', (done) ->
-      client.getFolders done
 
     it 'should be able to download text files properly', (done)->
       callback = (buf, start,end) ->
