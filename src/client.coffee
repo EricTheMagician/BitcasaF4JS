@@ -5,6 +5,10 @@ dict = require 'dict'
 pth = require 'path'
 fs = require 'fs'
 memoize = require 'memoizee'
+d = require('d');
+
+memoizeMethods = require('memoizee/methods')
+
 #for mocha testing
 if Object.keys( module.exports ).length == 0
   r = require './folder.coffee'
@@ -44,13 +48,6 @@ class BitcasaClient
   authenticate: (code) ->
     url = "#{BASEURL}oauth2/access_token?secret=#{@secret}&code=#{code}"
     new Error("Not implemented")
-
-  getRoot: (cb) ->
-    client = @
-    callback = (data,response) ->
-      BitcasaFolder.parseFolder(data,response, client,cb)
-    @rateLimit.removeTokens 1, (err, remaining) ->
-      client.client.methods.getRootFolder callback
 
   # callback should take 3 parameters:
   #   a buffer, where to start and where to end.
@@ -117,7 +114,8 @@ class BitcasaClient
     if recurse
       recursive(chunkStart + num*client.chunkSize, chunkEnd + 1 + num*client.chunkSize)  for num in [1..client.advancedChunks]
 
-  getFolders: (path, cb) ->
+Object.defineProperties(BitcasaClient.prototype, memoizeMethods({
+  getFolders: d( (path,cb)->
     client = @
 
     object = client.folderTree.get(path)
@@ -128,5 +126,6 @@ class BitcasaClient
         if not err
           url = "#{BASEURL}/folders#{object.bitcasaPath}?access_token=#{client.accessToken}"
           client.client.get(url, callback)
-
+  , { maxAge: 15000, length: 1 })
+}));
 module.exports.client = BitcasaClient

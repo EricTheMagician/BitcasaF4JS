@@ -15,7 +15,7 @@ logger = new (winston.Logger)({
 #bitcasa client
 client = new BitcasaClient(config.clientId, config.secret, config.redirectUrl, logger, config.accessToken, config.chunkSize, config.advancedChunks, config.cacheLocation)
 #get folder attributes in the background
-client.getFolders()
+client.getFolders "/"
 
 errnoMap =
     EPERM: 1,

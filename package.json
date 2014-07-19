@@ -1,16 +1,15 @@
 {
   "name": "BitcasaF4JS",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Bitcasa Fuse filesystem written in node",
   "author": {
     "name": "Eric Yen",
     "email": "eric@ericyen.com"
   },
-  "repository" :
-    {
-      "type" : "git",
-      "url" : "http://github.com/thejinx0r/BitcasaF4JS"
-    },
+  "repository": {
+    "type": "git",
+    "url": "http://github.com/thejinx0r/BitcasaF4JS"
+  },
   "files": [
     "src"
   ],
@@ -22,7 +21,8 @@
     "fuse4js": "~0.1.9",
     "winston": "~0.7.3",
     "memoizee": "~0.3.5",
-    "coffee-script": "~1.7.1"
+    "coffee-script": "~1.7.1",
+    "d": "~0.1.1"
   },
   "devDependencies": {
     "MD5": "~1.2.1",
