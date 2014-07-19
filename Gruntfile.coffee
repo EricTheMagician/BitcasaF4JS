@@ -9,8 +9,7 @@ module.exports = (grunt) ->
         files: {
           # 'build/bitcasa/filesystem.js': ['src/file.coffee', 'src/folder.coffee'],
           # 'build/bitcasa/client.js': ['src/client.coffee'],
-          'build/fs.js': ['src/file.coffee', 'src/folder.coffee', 'src/client.coffee', 'src/fs.coffee', 'src/watch.coffee'],
-          'build/config.json.sample': ['src/config.json.sample']
+          'build/fs.js': ['src/file.coffee', 'src/folder.coffee', 'src/client.coffee', 'src/fs.coffee', 'src/watch.coffee']
         }
       }
     },
@@ -45,7 +44,13 @@ module.exports = (grunt) ->
         },
         src: ['test/**/*.coffee']
       }
-    }
+    },
+    copy: {
+      main: {
+        src: 'src/config.json.sample',
+        dest: 'build/config.json.sample',
+      },
+    },
 
   });
 
@@ -53,6 +58,7 @@ module.exports = (grunt) ->
   grunt.loadNpmTasks('grunt-coffee-jshint');
   grunt.loadNpmTasks('grunt-contrib-watch');
   grunt.loadNpmTasks('grunt-mocha-test');
+  grunt.loadNpmTasks('grunt-contrib-copy');
 
   # Default task(s).
-  grunt.registerTask('default', ['coffee', 'mochaTest']);
+  grunt.registerTask('default', ['copy', 'coffee', 'mochaTest']);
