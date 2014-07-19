@@ -6,5 +6,6 @@
   "mountPoint": "",
   "chunkSize": 8388608,
   "cacheLocation": "",
+  "maxCache": 2048,
   "advancedChunks": 10,
 }
