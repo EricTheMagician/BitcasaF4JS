@@ -117,7 +117,7 @@ class BitcasaClient
 Object.defineProperties(BitcasaClient.prototype, memoizeMethods({
   getFolders: d( (path,cb)->
     client = @
-
+    client.logger.log("debug", "getting folder info from bitcasa for #{path}")
     object = client.folderTree.get(path)
     if object instanceof BitcasaFolder
       @rateLimit.removeTokens 1, (err,remainingRequests) ->
