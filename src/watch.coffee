@@ -1,10 +1,11 @@
 config = require('./config.json')
 fs = require 'fs'
 winston = require 'winston'
-location = config.cacheLocation
+memoize = require 'memoizee'
 pth = require 'path'
-maxCache = config.maxCacheSize  * 1024 * 1024
 
+location = config.cacheLocation
+maxCache = config.maxCacheSize  * 1024 * 1024
 
 logger = new (winston.Logger)({
     transports: [
@@ -22,20 +23,26 @@ zip = () ->
 sortStats = (x,y) ->
    return x[1].atime.getTime() - y[1].atime.getTime()
 
+locked = false
+statfs = memoize(fs.statSync, {maxAge:60000} )
 watcher = fs.watch location, (event, filename) ->
-  logger.log("debug", "Watcher: event #{event} triggered by #{filename}")
-
-  files = fs.readdirSync(location)
-  stats = (fs.statSync(pth.join(location,file)) for file in files)
-  sizes = (stat.size for stat in stats)
-  totalSize = sizes.reduce (x,y) -> x + y
-
-  if totalSize > maxCache
-    all = zip(files,stats)
-    all.sort(sortStats)
-
-    for info in all
+  logger.log("silly", "Watcher: event #{event} triggered by #{filename} - status: #{locked} - #{not locked}")
+  if locked == false
+    locked = true
+    try
+      files = fs.readdirSync(location)
+      stats = (statfs(pth.join(location,file)) for file in files)
+      sizes = (stat.size for stat in stats)
+      totalSize = sizes.reduce (x,y) -> x + y
       if totalSize > maxCache
-        break
-      totalSize -= info[1].size
-      fs.unlinkSync(pth.join(info[0]))
+        all = zip(files,stats)
+        all.sort(sortStats)
+
+        for info in all
+          if totalSize < maxCache
+            break
+          totalSize -= info[1].size
+          fs.unlinkSync(pth.join(location,info[0]))
+    catch error
+      logger.log("error", "Watcher: there was a problem: #{error}")
+    locked = false

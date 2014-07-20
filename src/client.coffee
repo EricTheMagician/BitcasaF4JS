@@ -117,7 +117,7 @@ class BitcasaClient
 Object.defineProperties(BitcasaClient.prototype, memoizeMethods({
   getFolders: d( (path,cb)->
     client = @
-
+    client.logger.log("debug", "getting folder info from bitcasa for #{path}")
     object = client.folderTree.get(path)
     if object instanceof BitcasaFolder
       @rateLimit.removeTokens 1, (err,remainingRequests) ->
@@ -126,6 +126,6 @@ Object.defineProperties(BitcasaClient.prototype, memoizeMethods({
         if not err
           url = "#{BASEURL}/folders#{object.bitcasaPath}?access_token=#{client.accessToken}"
           client.client.get(url, callback)
-  , { maxAge: 15000, length: 1 })
+  , { maxAge: 1200000, length: 1 })
 }));
 module.exports.client = BitcasaClient
