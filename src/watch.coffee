@@ -29,7 +29,6 @@ watcher = fs.watch location, (event, filename) ->
   logger.log("silly", "Watcher: event #{event} triggered by #{filename} - status: #{locked} - #{not locked}")
   if locked == false
     locked = true
-    console.log("location : #{location} - maxCache: #{maxCache}")
     try
       files = fs.readdirSync(location)
       stats = (statfs(pth.join(location,file)) for file in files)
@@ -45,5 +44,5 @@ watcher = fs.watch location, (event, filename) ->
           totalSize -= info[1].size
           fs.unlinkSync(pth.join(location,info[0]))
     catch error
-      console.log("error", "Watcher: there was a problem: #{error}")
+      logger.log("error", "Watcher: there was a problem: #{error}")
     locked = false
