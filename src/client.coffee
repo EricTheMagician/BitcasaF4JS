@@ -124,8 +124,11 @@ Object.defineProperties(BitcasaClient.prototype, memoizeMethods({
         callback = (data,response) ->
           BitcasaFolder.parseFolder(data,response, client,cb)
         if not err
-          url = "#{BASEURL}/folders#{object.bitcasaPath}?access_token=#{client.accessToken}"
+          depth = 0
+          if path == "/"
+            depth = 1
+          url = "#{BASEURL}/folders#{object.bitcasaPath}?access_token=#{client.accessToken}&depth=#{depth}"
           client.client.get(url, callback)
-  , { maxAge: 15000, length: 1 })
+  , { maxAge: 120000, length: 1 })
 }));
 module.exports.client = BitcasaClient
