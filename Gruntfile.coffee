@@ -39,10 +39,10 @@ module.exports = (grunt) ->
         options: {
           reporter: 'spec',
           clearRequireCache: true,
-          timeout: 30000,
+          timeout: 300000,
           # require: ['coffee-script/register']
         },
-        src: ['test/**/*.coffee']
+        src: ['test/testFS.coffee', 'test/testClient.coffee']
       }
     },
     copy: {

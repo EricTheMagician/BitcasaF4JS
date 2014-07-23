@@ -12,7 +12,7 @@ class BitcasaFolder
 
   constructor: (@client, @bitcasaPath, @name, @ctime, @mtime, @children = [])->
 
-  @parseFolder: (data, response, client, cb) ->
+  @parseFolder: (data, response, client, retry, cb) ->
     try
       data = JSON.parse(data)
       # console.log(data.result)
@@ -32,11 +32,13 @@ class BitcasaFolder
         if o.category == 'folders'
           # keep track of the conversion of bitcasa path to real path
           client.bitcasaTree.set o.path, realPath
-          client.folderTree.set( realPath, new BitcasaFolder(client, o.path, o.name, new Date(o.ctime), new Date(o.mtime), []) ) 
+          client.folderTree.set( realPath, new BitcasaFolder(client, o.path, o.name, new Date(o.ctime), new Date(o.mtime), []) )
         else
           client.folderTree.set realPath, new BitcasaFile(client, o.path, o.name,o.size,  new Date(o.ctime), new Date(o.mtime))
     catch error
-      console.log 'data was likely not a json variable', error
+      console.log 'data was likely not a json variable', error, data
+      if typeof(retry) == typeof(Function)
+        retry()
     if typeof(cb) == typeof(Function)
       cb()
   getAttr: (cb)->

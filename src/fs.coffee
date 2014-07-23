@@ -1,21 +1,28 @@
-config = require('./config.json')
+#do this for mocha testing
+if Object.keys( module.exports ).length == 0
+  config = require('../build/config.json')
+  BitcasaClient = require( '../src/client.coffee').client
+  BitcasaFolder = require( '../src/folder.coffee').folder
+  BitcasaFile = require( '../src/file.coffee').file
+else
+  config = require('./config.json')
+  BitcasaClient = module.exports.client
+  BitcasaFolder = module.exports.folder
+  BitcasaFile = module.exports.file
+
 f4js = require 'fuse4js'
 winston = require 'winston'
-BitcasaClient = module.exports.client
-BitcasaFolder = module.exports.folder
-BitcasaFile = module.exports.file
-
 logger = new (winston.Logger)({
     transports: [
       new (winston.transports.Console)({ level: 'info' }),
       new (winston.transports.File)({ filename: '/tmp/somefile.log', level:'debug' })
     ]
   })
-
 #bitcasa client
 client = new BitcasaClient(config.clientId, config.secret, config.redirectUrl, logger, config.accessToken, config.chunkSize, config.advancedChunks, config.cacheLocation)
 #get folder attributes in the background
 client.getFolders "/"
+
 
 errnoMap =
     EPERM: 1,
@@ -39,7 +46,7 @@ readlink = (path,cb ) ->
   return cb(-errnoMap.ENOENT)
 
 chmod = (path,mod, cb) ->
-  return cb(-errnoMap.ENOENT)
+  return cb(0)
 
 # /*
 #  * Handler for the read() system call.
@@ -90,7 +97,7 @@ read = (path, offset, len, buf, fh, cb) ->
 init = (cb) ->
   logger.log('info', 'Starting fuse4js on node-bitcasa')
   # logger.log('info', "client token #{client.accessToken}")
-  cb()
+  cb(0)
 
 open = (path, flags, cb) ->
   err = 0 # assume success
@@ -141,7 +148,10 @@ readdir = (path, cb) ->
     else if object instanceof BitcasaFolder
       err = 0
       names = object.children
-      client.getFolders( path )
+      if names.length == 0
+        fn = ->
+          client.getFolders( path )
+        setTimeout(fn, 50)
     else
       err = -errnoMap.ENOENT
   else
@@ -149,6 +159,7 @@ readdir = (path, cb) ->
 
   cb( err, names );
 destroy = (cb) ->
+  cb(0)
 
 handlers =
   getattr: getattr,
@@ -172,8 +183,8 @@ handlers =
 
 try
   console.log 'attempting to start f4js'
-  opts = ['-o', 'allow_other']
-  f4js.start(config.mountPoint, handlers, false,opts);
+  opts = ['-o', 'allow_other', '-o','daemon_timeout=300', '-o', 'noappledouble', '-s']
+  f4js.start(config.mountPoint, handlers, true,opts);
   logger.log('info', "mount point: #{config.mountPoint}")
 catch e
   console.log("Exception when starting file system: #{e}")

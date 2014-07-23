@@ -65,17 +65,17 @@ describe 'BitcasaClient instance', ->
       callback = (dataBuf, start, end)->
         data
       # client.download('/BqRTHzyOSm2PVYt02cTNCw/HzERXLW7TkOvT7ld8NF_mw')
-describe 'FUSE filesystem', ->
-  client = new BitcasaClient(config.clientId, config.secret, config.redirectUrl, config.accessToken, logger)
-  it 'should return the right attribute', (done) ->
-    cb = (err, status)->
-      done()
-    client.folderTree.get('/').getAttr(cb)
 
-  it 'given the wrong attr lookup, it should fail',  ->
-    client = new BitcasaClient(config.clientId, config.secret, config.redirectUrl, config.accessToken)
-    cb = (err, status)->
-      done()
-    fn = ->
-      client.folderTree.get('/..').getAttr(cb)
-    expect(fn).to.throw( Error)
+    it 'should return the right attribute', (done) ->
+      client = new BitcasaClient(config.clientId, config.secret, config.redirectUrl, config.accessToken, logger)
+      cb = (err, status)->
+        done()
+      client.folderTree.get('/').getAttr(cb)
+
+    it 'given the wrong attr lookup, it should fail',  ->
+      client = new BitcasaClient(config.clientId, config.secret, config.redirectUrl, config.accessToken)
+      cb = (err, status)->
+        done()
+      fn = ->
+        client.folderTree.get('/..').getAttr(cb)
+      expect(fn).to.throw( Error)
