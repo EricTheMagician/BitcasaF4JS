@@ -76,7 +76,7 @@ class BitcasaClient
         cache = pth.join(client.cacheLocation,"#{name}-#{rStart}-#{rEnd-1}")
         unless existsMemoized(cache)
           unless client.downloadTree.has("#{filePath}-#{rStart}")
-            client.logger.log("debug", "#{filePath}-#{rStart}-#{rEnd - 1} -- exists: - #{existsMemoized("#{filePath}-#{rStart}")} - has: #{client.downloadTree.has("#{filePath}-#{rStart}")} - recursing at #{chunkStart} - (#{rStart}-#{rEnd})")
+            client.logger.log("silly", "#{filePath}-#{rStart}-#{rEnd - 1} -- exists: - #{existsMemoized("#{filePath}-#{rStart}")} - has: #{client.downloadTree.has("#{filePath}-#{rStart}")} - recursing at #{chunkStart} - (#{rStart}-#{rEnd})")
             client.downloadTree.set("#{filePath}-#{rStart}",1)
             callback = ->
                 client.downloadTree.delete("#{filePath}-#{rStart}")
@@ -91,18 +91,22 @@ class BitcasaClient
       cb(buffer, 0, readSize+1)
     else
       client.logger.log("info", "#{name} - downloading #{chunkStart}-#{chunkEnd}")
-      @rateLimit.removeTokens 1, (err, remainingRequests) ->
+      if @rateLimit.tryRemoveTokens(1)
           args =
             "path":
               "path": path
             headers:
               Range: "bytes=#{chunkStart}-#{chunkEnd}"
-          console.log "download requests: #{remainingRequests}"
+          console.log "download requests: #{client.rateLimit.getTokensRemaining()}"
           callback = (data,response) ->
-            client.logger.log("debug", "downloaded: #{location} - #{chunkEnd-chunkStart} -- limit #{remainingRequests}")
+            client.logger.log("debug", "downloaded: #{location} - #{chunkEnd-chunkStart} -- limit #{client.rateLimit.getTokensRemaining()}")
             if data.length == 14 and data.toString() == "invalid range"
-              client.logger.log("debug", "failed to download #{location}")
+              client.logger.log("debug", "failed to download #{location} -- invalid range")
               client.download(path, name, start,end,maxSize, recurse, cb )
+            else if data.length < (chunkStart - chunkEnd + 1)
+              client.logger.log("debug", "failed to download #{location} -- size mismatch")
+              client.download(path, name, start,end,maxSize, recurse, cb )
+
             else
               client.logger.log("debug", "successfully to download #{location}")
 
@@ -112,6 +116,8 @@ class BitcasaClient
           req = client.client.methods.downloadChunk args,callback
           req.on 'error', (err) ->
             console.log "there was an error with request #{location}, #{err}"
+      else
+        client.download(path, name, start,end,maxSize, recurse, cb )
     if recurse
       recursive(chunkStart + num*client.chunkSize, chunkEnd + 1 + num*client.chunkSize)  for num in [1..client.advancedChunks]
 
@@ -125,7 +131,7 @@ Object.defineProperties(BitcasaClient.prototype, memoizeMethods({
       if @rateLimit.tryRemoveTokens(1)
         callback = (data,response) ->
           BitcasaFolder.parseFolder(data,response, client,null, cb)
-        depth = 4
+        depth = 3
         if path == "/"
           depth = 1
         url = "#{BASEURL}/folders#{object.bitcasaPath}?access_token=#{client.accessToken}&depth=#{depth}"
