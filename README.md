@@ -14,10 +14,11 @@ NodeJS:
 1. npm install -g grunt-cli
 2. git clone https://github.com/thejinx0r/BitcasaF4JS.git
 3. cd BitcasaF4JS
-4. grunt coffee
-5. cd build
-6. copy the config.json.sample to config.json and edit it.
-7. node fs.js
+4. npm install
+5. grunt coffee
+6. cd build
+7. copy the config.json.sample to config.json and edit it.
+8. node fs.js
 
 
 ##Todo
