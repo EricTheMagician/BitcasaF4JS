@@ -131,9 +131,7 @@ Object.defineProperties(BitcasaClient.prototype, memoizeMethods({
       if @rateLimit.tryRemoveTokens(1)
         callback = (data,response) ->
           BitcasaFolder.parseFolder(data,response, client,null, cb)
-        depth = 2
-        if path == "/"
-          depth = 1
+        depth = 1
         url = "#{BASEURL}/folders#{object.bitcasaPath}?access_token=#{client.accessToken}&depth=#{depth}"
         client.client.get(url, callback)
       else
