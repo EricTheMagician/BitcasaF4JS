@@ -184,8 +184,16 @@ handlers =
 
 try
   console.log 'attempting to start f4js'
-  opts = ['-o', 'allow_other', '-o','daemon_timeout=300', '-o', 'noappledouble', '-s']
-  f4js.start(config.mountPoint, handlers, true,opts);
+  switch  os.type()
+    case 'Linux':
+      opts = ['-o', 'allow_other']
+      break
+    case 'Darwin':
+      opts = ['-o', 'allow_other', '-o','daemon_timeout=300', '-o', 'noappledouble', '-s']
+      break
+    default:
+      opts = []
+  f4js.start(config.mountPoint, handlers, false, opts);
   logger.log('info', "mount point: #{config.mountPoint}")
 catch e
   console.log("Exception when starting file system: #{e}")
