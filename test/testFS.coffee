@@ -21,7 +21,7 @@ describe 'FUSE filesystem', ->
       done()
     fn = ->
       exec("ls #{config.mountPoint}", callback )
-    setTimeout(fn, 10000)
+    setTimeout(fn, 15000)
 
 
 

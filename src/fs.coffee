@@ -24,18 +24,19 @@ client = new BitcasaClient(config.clientId, config.secret, config.redirectUrl, l
 client.getFolders "/"
 
 
+#http://lxr.free-electrons.com/source/include/uapi/asm-generic/errno-base.h#L23
 errnoMap =
     EPERM: 1,
     ENOENT: 2,
     EACCES: 13,
+    ENOTDIR: 20,
     EINVAL: 22,
     ENOTEMPTY: 39
 
 
 getattr = (path, cb) ->
-  logger.log('debug', "getattr #{path}")
-  folderTree =  client.folderTree
-  if folderTree.has(path)
+  logger.log('silly', "getattr #{path}")
+  if client.folderTree.has(path)
     callback = (status, attr)->
       cb(status, attr)
     return client.folderTree.get(path).getAttr(callback)
@@ -103,10 +104,10 @@ open = (path, flags, cb) ->
   err = 0 # assume success
   folderTree =  client.folderTree
   logger.log('silly', "opening file #{path}, #{flags},  exists #{folderTree.has(path)}")
-  if folderTree.has(path)
-    cb(0,1)
+  if not folderTree.has(path)
+    return cb(0,null)
   else
-    cb(errnoMap.ENOENT)# // we don't return a file handle, so fuse4js will initialize it to 0
+    return cb(errnoMap.ENOENT)# // we don't return a file handle, so fuse4js will initialize it to 0
 
 flush = (buf, cb) ->
   logger.log("silly", "#{typeof buf}")
@@ -116,9 +117,9 @@ release =  (path, fh, cb) ->
   cb(0)
 
 statfs= (cb) ->
-    cb(0, {
-        bsize: 1000000,
-        frsize: 1000000,
+  return cb(0, {
+        bsize: config.chunkSize,
+        frsize: 65536,
         blocks: 1000000,
         bfree: 1000000,
         bavail: 1000000,
@@ -126,8 +127,8 @@ statfs= (cb) ->
         ffree: 1000000,
         favail: 1000000,
         fsid: 1000000,
-        flag: 1000000,
-        namemax: 1000000
+        flag: 0,
+        namemax: 64
     })
 
 # /*
@@ -144,7 +145,7 @@ readdir = (path, cb) ->
   if folderTree.has(path)
     object = folderTree.get(path)
     if object instanceof BitcasaFile
-      err = -errnoMap.EINVAL
+      err = -errnoMap.ENOTDIR
     else if object instanceof BitcasaFolder
       err = 0
       names = object.children
