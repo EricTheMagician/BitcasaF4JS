@@ -108,7 +108,7 @@ open = (path, flags, cb) ->
   if not folderTree.has(path)
     return cb(0,null)
   else
-    return cb(errnoMap.ENOENT)# // we don't return a file handle, so fuse4js will initialize it to 0
+    return cb(-errnoMap.ENOENT)# // we don't return a file handle, so fuse4js will initialize it to 0
 
 flush = (buf, cb) ->
   logger.log("silly", "#{typeof buf}")
