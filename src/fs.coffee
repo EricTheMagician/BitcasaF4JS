@@ -12,6 +12,7 @@ else
 
 f4js = require 'fuse4js'
 winston = require 'winston'
+os = require 'os'
 logger = new (winston.Logger)({
     transports: [
       new (winston.transports.Console)({ level: 'info' }),
