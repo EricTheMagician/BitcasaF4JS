@@ -117,7 +117,9 @@ class BitcasaClient
           req.on 'error', (err) ->
             console.log "there was an error with request #{location}, #{err}"
       else
-        client.download(path, name, start,end,maxSize, recurse, cb )
+        fn =->
+          client.download(path, name, start,end,maxSize, recurse, cb )
+        setTimeout(fn, 5000)
     if recurse
       recursive(chunkStart + num*client.chunkSize, chunkEnd + 1 + num*client.chunkSize)  for num in [1..client.advancedChunks]
 
@@ -131,7 +133,9 @@ Object.defineProperties(BitcasaClient.prototype, memoizeMethods({
       if @rateLimit.tryRemoveTokens(1)
         callback = (data,response) ->
           BitcasaFolder.parseFolder(data,response, client,null, cb)
-        depth = 1
+        depth = 2
+        if path == 'root'
+          depth = 1
         url = "#{BASEURL}/folders#{object.bitcasaPath}?access_token=#{client.accessToken}&depth=#{depth}"
         client.client.get(url, callback)
       else
