@@ -84,8 +84,8 @@ read = (path, offset, len, buf, fh, cb) ->
 
       try
         dataBuf.copy(buf,0,dataStart,dataEnd);
-        cb(dataEnd-dataStart + 1);
         client.downloadTree.delete("#{path}-#{chunkStart}")
+        return cb(dataEnd-dataStart + 1);
       catch error
         console.log("failed reading:", error)
 
@@ -99,7 +99,7 @@ read = (path, offset, len, buf, fh, cb) ->
 init = (cb) ->
   logger.log('info', 'Starting fuse4js on node-bitcasa')
   # logger.log('info', "client token #{client.accessToken}")
-  cb(0)
+  return cb(0)
 
 open = (path, flags, cb) ->
   err = 0 # assume success
@@ -112,10 +112,10 @@ open = (path, flags, cb) ->
 
 flush = (buf, cb) ->
   logger.log("silly", "#{typeof buf}")
-  cb(0)
+  return cb(0)
 
 release =  (path, fh, cb) ->
-  cb(0)
+  return cb(0)
 
 statfs= (cb) ->
   return cb(0, {
@@ -159,9 +159,9 @@ readdir = (path, cb) ->
   else
     err = -errnoMap.ENOENT
 
-  cb( err, names );
+  return cb( err, names );
 destroy = (cb) ->
-  cb(0)
+  return cb(0)
 
 handlers =
   getattr: getattr,
