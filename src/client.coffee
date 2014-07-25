@@ -19,7 +19,7 @@ else
 existsMemoized = memoize(fs.existsSync, {maxAge:5000})
 class BitcasaClient
   constructor: (@id, @secret, @redirectUrl, @logger, @accessToken = null, @chunkSize = 1024*1024, @advancedChunks = 10, @cacheLocation = '/tmp/node-bitcasa') ->
-    @rateLimit = new RateLimiter 180, 'minute'
+    @rateLimit = new RateLimiter 175, 'minute'
     now = (new Date).getTime()
     root = new BitcasaFolder(@,'/', 'root', now, now, [])
     @folderTree = new dict({'/': root})
@@ -126,16 +126,16 @@ class BitcasaClient
 Object.defineProperties(BitcasaClient.prototype, memoizeMethods({
   getFolders: d( (path,cb)->
     client = @
-    client.logger.log("debug", "getting folder info from bitcasa for #{path}")
     object = client.folderTree.get(path)
     if object instanceof BitcasaFolder
       console.log "requests: #{client.rateLimit.getTokensRemaining()}"
       if @rateLimit.tryRemoveTokens(1)
         callback = (data,response) ->
           BitcasaFolder.parseFolder(data,response, client,null, cb)
-        depth = 2
-        if path == 'root'
+        depth = 3
+        if path == "/"
           depth = 1
+        client.logger.log("debug", "getting folder info from bitcasa for #{path} -- depth #{depth}")
         url = "#{BASEURL}/folders#{object.bitcasaPath}?access_token=#{client.accessToken}&depth=#{depth}"
         client.client.get(url, callback)
       else
