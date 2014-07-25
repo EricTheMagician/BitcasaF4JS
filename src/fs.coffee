@@ -105,7 +105,7 @@ open = (path, flags, cb) ->
   err = 0 # assume success
   folderTree =  client.folderTree
   logger.log('silly', "opening file #{path}, #{flags},  exists #{folderTree.has(path)}")
-  if not folderTree.has(path)
+  if folderTree.has(path)
     return cb(0,null)
   else
     return cb(-errnoMap.ENOENT)# // we don't return a file handle, so fuse4js will initialize it to 0
