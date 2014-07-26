@@ -125,7 +125,7 @@ class BitcasaClient
     if recurse
       #download the last chunk in advance
       maxStart = Math.floor( maxSize / client.chunkSize) * client.chunkSize
-      client.download path, name, maxStart, maxSize, false, () ->
+      client.download path, name, maxStart, maxSize,maxSize, false, () ->
 
       #download the next few chunks in advance
       recursive(chunkStart + num*client.chunkSize, chunkEnd + 1 + num*client.chunkSize)  for num in [1..client.advancedChunks]
