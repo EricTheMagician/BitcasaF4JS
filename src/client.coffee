@@ -64,11 +64,9 @@ class BitcasaClient
       client.logger.log("debug", "number chunks requested greater than 1 - (start,end) = (#{start}-#{end})")
       client.logger.log("debug", "number chunks requested greater than 1 - (chunkStart,chunkEnd) = (#{chunkStart}-#{chunkEnd})")
 
-    #save locations
+    #save location
     location = pth.join(client.cacheLocation,"#{pth.basename(path)}-#{chunkStart}-#{chunkEnd}")
     client.logger.log('silly',"cache location: #{location}")
-    #check if the data has been cached or not
-    #otherwise, download from the web
 
     recursive = (rStart, rEnd) ->
       if (rEnd + 1) < maxSize
@@ -83,6 +81,8 @@ class BitcasaClient
                 client.downloadTree.delete("#{filePath}-#{rStart}")
             client.download(path, name, rStart,rEnd,maxSize, false, callback )
 
+    #check if the data has been cached or not
+    #otherwise, download from the web
     if fs.existsSync(location)
       readSize = end - start;
       buffer = new Buffer(readSize+1)
@@ -125,7 +125,7 @@ class BitcasaClient
     if recurse
       #download the last chunk in advance
       maxStart = Math.floor( maxSize / client.chunkSize) * client.chunkSize
-      recursive(maxStart ,maxSize)
+      client.download path, name, maxStart, maxSize, false, () ->
 
       #download the next few chunks in advance
       recursive(chunkStart + num*client.chunkSize, chunkEnd + 1 + num*client.chunkSize)  for num in [1..client.advancedChunks]
