@@ -70,7 +70,7 @@ class BitcasaClient
 
     recursive = (rStart, rEnd) ->
       rEnd = Math.min( Math.ceil(rEnd/client.chunkSize) * client.chunkSize, maxSize)-1
-      if (rEnd + 1) < maxSize and rEnd > rStart
+      if (rEnd + 1) <= maxSize and rEnd > rStart
         parentPath = client.bitcasaTree.get(pth.dirname(path))
         filePath = pth.join(parentPath,name)
         cache = pth.join(client.cacheLocation,"#{pth.basename(path)}-#{rStart}-#{rEnd-1}")
