@@ -74,7 +74,7 @@ class BitcasaClient
       if (rEnd + 1) < maxSize
         parentPath = client.bitcasaTree.get(pth.dirname(path))
         filePath = pth.join(parentPath,name)
-        cache = pth.join(client.cacheLocation,"#{name}-#{rStart}-#{rEnd-1}")
+        cache = pth.join(client.cacheLocation,"#{pth.basename(path)}-#{rStart}-#{rEnd-1}")
         unless existsMemoized(cache)
           unless client.downloadTree.has("#{filePath}-#{rStart}")
             client.logger.log("silly", "#{filePath}-#{rStart}-#{rEnd - 1} -- exists: - #{existsMemoized("#{filePath}-#{rStart}")} - has: #{client.downloadTree.has("#{filePath}-#{rStart}")} - recursing at #{chunkStart} - (#{rStart}-#{rEnd})")
