@@ -61,6 +61,7 @@ class BitcasaClient
     chunks = (chunkEnd - chunkStart)/client.chunkSize
 
     if chunks > 1
+      client.logger.log("error", "number chunks requested needs to be 1 - (#{start}-#{end})")
       throw new Error('number of chunks requested needs to be 1')
 
     #save locations
