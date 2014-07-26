@@ -6,8 +6,8 @@ This is a simple (incomplete) filesystem written in NodeJS to mount Bitcasa as a
 ##Installing
 
 ###Requirements
-Linux / MacOSX with FUSE
-Fuse is not compatible with Windows.
+Linux / MacOSX with FUSE.
+**Fuse is not compatible with Windows.**
 
 NodeJS:
 
