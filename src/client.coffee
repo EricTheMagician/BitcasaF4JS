@@ -104,13 +104,14 @@ class BitcasaClient
             if data.length == 14 and data.toString() == "invalid range"
               client.logger.log("debug", "failed to download #{location} -- invalid range")
               client.download(path, name, start,end,maxSize, recurse, cb )
-            else if typeof(data.copy) == 'undefined' or data.length < (chunkStart - chunkEnd + 1)
-              client.logger.log("debug", "failed to download #{location} -- size mismatch")
+            else if not (data instanceof Buffer)
+              client.logger.log("debug", "failed to download #{location} -- typeof data: #{typeof data}-- invalid type")
               client.download(path, name, start,end,maxSize, recurse, cb )
-
+            else if  data.length < (chunkStart - chunkEnd + 1)
+              client.logger.log("debug", "failed to download #{location} -- #{data.length} - size mismatch")
+              client.download(path, name, start,end,maxSize, recurse, cb )
             else
               client.logger.log("debug", "successfully to download #{location}")
-
               fs.writeFileSync(location,data)
               cb(data, start - chunkStart, end+1 - chunkStart )
           client.logger.log "debug", "starting to download #{location}"
