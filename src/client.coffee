@@ -69,7 +69,8 @@ class BitcasaClient
     client.logger.log('silly',"cache location: #{location}")
 
     recursive = (rStart, rEnd) ->
-      if (rEnd + 1) < maxSize
+      rEnd = Math.min( Math.ceil(rEnd/client.chunkSize) * client.chunkSize, maxSize)-1
+      if (rEnd + 1) < maxSize and rEnd > rStart
         parentPath = client.bitcasaTree.get(pth.dirname(path))
         filePath = pth.join(parentPath,name)
         cache = pth.join(client.cacheLocation,"#{pth.basename(path)}-#{rStart}-#{rEnd-1}")
@@ -125,8 +126,7 @@ class BitcasaClient
     if recurse
       #download the last chunk in advance
       maxStart = Math.floor( maxSize / client.chunkSize) * client.chunkSize
-      client.download path, name, maxStart, maxSize,maxSize, false, () ->
-
+      recursive maxStart, maxSize
       #download the next few chunks in advance
       recursive(chunkStart + num*client.chunkSize, chunkEnd + 1 + num*client.chunkSize)  for num in [1..client.advancedChunks]
 Object.defineProperties(BitcasaClient.prototype, memoizeMethods({
