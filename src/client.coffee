@@ -104,7 +104,7 @@ class BitcasaClient
             if data.length == 14 and data.toString() == "invalid range"
               client.logger.log("debug", "failed to download #{location} -- invalid range")
               client.download(path, name, start,end,maxSize, recurse, cb )
-            else if data.length < (chunkStart - chunkEnd + 1)
+            else if data.length == undefined or data.length < (chunkStart - chunkEnd + 1)
               client.logger.log("debug", "failed to download #{location} -- size mismatch")
               client.download(path, name, start,end,maxSize, recurse, cb )
 
