@@ -21,7 +21,11 @@ zip = () ->
     arr[i] for arr in arguments
 
 sortStats = (x,y) ->
-   return x[1].atime.getTime() - y[1].atime.getTime()
+  diff = x[1].atime.getTime() - y[1].atime.getTime()
+  switch
+    when diff < 0 then return -1
+    when diff == 0 then return 0
+    else return 1
 
 locked = false
 statfs = memoize(fs.statSync, {maxAge:60000} )
