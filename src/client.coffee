@@ -123,8 +123,12 @@ class BitcasaClient
           client.download(path, name, start,end,maxSize, recurse, cb )
         setTimeout(fn, 5000)
     if recurse
+      #download the last chunk in advance
+      maxStart = Math.floor( maxSize / client.chunkSize) * client.chunkSize
+      recursive(maxStart ,maxSize)
+      
+      #download the next few chunks in advance
       recursive(chunkStart + num*client.chunkSize, chunkEnd + 1 + num*client.chunkSize)  for num in [1..client.advancedChunks]
-
 Object.defineProperties(BitcasaClient.prototype, memoizeMethods({
   getFolders: d( (path,cb)->
     client = @
