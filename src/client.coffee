@@ -65,7 +65,7 @@ class BitcasaClient
       client.logger.log("debug", "number chunks requested greater than 1 - (chunkStart,chunkEnd) = (#{chunkStart}-#{chunkEnd})")
 
     #save locations
-    location = pth.join(client.cacheLocation,"#{name}-#{chunkStart}-#{chunkEnd}")
+    location = pth.join(client.cacheLocation,"#{pth.basename(path)}-#{chunkStart}-#{chunkEnd}")
     client.logger.log('silly',"cache location: #{location}")
     #check if the data has been cached or not
     #otherwise, download from the web
