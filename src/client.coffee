@@ -105,7 +105,7 @@ class BitcasaClient
               client.logger.log("debug", "failed to download #{location} -- invalid range")
               client.download(path, name, start,end,maxSize, recurse, cb )
             else if not (data instanceof Buffer)
-              client.logger.log("debug", "failed to download #{location} -- typeof data: #{typeof data}-- invalid type")
+              client.logger.log("debug", "failed to download #{location} -- typeof data: #{typeof data} -- length #{data.length} -- invalid type")
               client.download(path, name, start,end,maxSize, recurse, cb )
             else if  data.length < (chunkStart - chunkEnd + 1)
               client.logger.log("debug", "failed to download #{location} -- #{data.length} - size mismatch")
@@ -126,7 +126,7 @@ class BitcasaClient
       #download the last chunk in advance
       maxStart = Math.floor( maxSize / client.chunkSize) * client.chunkSize
       recursive(maxStart ,maxSize)
-      
+
       #download the next few chunks in advance
       recursive(chunkStart + num*client.chunkSize, chunkEnd + 1 + num*client.chunkSize)  for num in [1..client.advancedChunks]
 Object.defineProperties(BitcasaClient.prototype, memoizeMethods({
@@ -145,7 +145,7 @@ Object.defineProperties(BitcasaClient.prototype, memoizeMethods({
         url = "#{BASEURL}/folders#{object.bitcasaPath}?access_token=#{client.accessToken}&depth=#{depth}"
         client.client.get(url, callback)
       else
-        console.log("remaining requests too low: #{client.rateLimit.getTokensRemaining()}" )
+        client.logger.log("remaining requests too low: #{client.rateLimit.getTokensRemaining()}" )
 
   , { maxAge: 120000, length: 1 })
 }));
