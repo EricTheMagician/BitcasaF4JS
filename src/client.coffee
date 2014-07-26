@@ -58,11 +58,11 @@ class BitcasaClient
     chunkStart = Math.floor((start)/client.chunkSize) * client.chunkSize
     end = Math.min(end,maxSize)
     chunkEnd = Math.min( Math.ceil(end/client.chunkSize) * client.chunkSize, maxSize)-1 #and make sure that it's not bigger than the actual file
-    chunks = (chunkEnd - chunkStart)/client.chunkSize
 
-    if chunks > 1
-      client.logger.log("error", "number chunks requested needs to be 1 - (#{start}-#{end})")
-      throw new Error('number of chunks requested needs to be 1')
+
+    if chunks > 1 and (maxSize - start) > 65536
+      client.logger.log("debug", "number chunks requested greater than 1 - (start,end) = (#{start}-#{end})")
+      client.logger.log("debug", "number chunks requested greater than 1 - (chunkStart,chunkEnd) = (#{chunkStart}-#{chunkEnd})")
 
     #save locations
     location = pth.join(client.cacheLocation,"#{name}-#{chunkStart}-#{chunkEnd}")
