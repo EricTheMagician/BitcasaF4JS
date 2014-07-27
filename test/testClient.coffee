@@ -27,7 +27,7 @@ describe 'BitcasaClient instance', ->
       expect(client.loginUrl()).to.equal("https://developer.api.bitcasa.com/v1/oauth2/authenticate?client_id=#{config.clientId}&redirect_url=#{config.redirectUrl}")
 
   describe 'when in use', ->
-    client = new BitcasaClient(config.clientId, config.secret, config.redirectUrl, logger, config.accessToken)
+    client = new BitcasaClient(config.clientId, config.secret, config.redirectUrl, logger, config.accessToken, 2*1024*1024)
     it 'should restpect rate limits and get root with infinite drive', (done) ->
       expect(client.rateLimit.getTokensRemaining()).to.equal(175)
       client.getFolders "/", ->
@@ -47,8 +47,6 @@ describe 'BitcasaClient instance', ->
       client.download('/Yz_YeHx0RLqIXWEQo6V8Eg/Dp4K3RLQTW2ilY1lo81Iww','file.ext',0,321,322, true, callback)
 
     it 'should be able to download binary files properly', (done)->
-      client = new BitcasaClient(config.clientId, config.secret, config.redirectUrl, logger, config.accessToken, 1024*1024*2)
-
       callback = (buf, start,end, data) ->
         newbuf = buf.slice( start,end)
         expect(end-start).to.equal(1378574)
