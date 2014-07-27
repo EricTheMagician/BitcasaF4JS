@@ -15,15 +15,16 @@
   ],
   "homepage": "https://github.com/thejinx0r/BitcasaF4JS",
   "dependencies": {
-    "dict": "~1.4.0",
-    "limiter": "~1.0.5",
-    "node-rest-client": "git+http://github.com/thejinx0r/node-rest-client",
-    "fuse4js": "~0.1.9",
-    "winston": "~0.7.3",
-    "memoizee": "~0.3.5",
     "coffee-script": "~1.7.1",
     "d": "~0.1.1",
-    "nodetime": "~0.8.15"
+    "dict": "~1.4.0",
+    "fibers": "^1.0.1",
+    "fuse4js": "~0.1.9",
+    "limiter": "~1.0.5",
+    "memoizee": "~0.3.5",
+    "node-rest-client": "git+http://github.com/thejinx0r/node-rest-client",
+    "nodetime": "~0.8.15",
+    "winston": "~0.7.3"
   },
   "devDependencies": {
     "MD5": "~1.2.1",
