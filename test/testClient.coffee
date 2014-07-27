@@ -6,6 +6,9 @@ modules = require '../src/client.coffee'
 config = require '../build/config.json'
 fs = require 'fs'
 BitcasaClient = modules.client
+Future = require('fibers/future')
+Fiber = require 'fibers'
+wait = Future.wait
 
 
 logger = new (winston.Logger)({
@@ -28,6 +31,7 @@ describe 'BitcasaClient instance', ->
 
   describe 'when in use', ->
     client = new BitcasaClient(config.clientId, config.secret, config.redirectUrl, logger, config.accessToken, 2*1024*1024)
+    download = Future.wrap(client.download)
     it 'should restpect rate limits and get root with infinite drive', (done) ->
       expect(client.rateLimit.getTokensRemaining()).to.equal(175)
       client.getFolders "/", ->
@@ -38,26 +42,28 @@ describe 'BitcasaClient instance', ->
       expect(client.rateLimit.getTokensRemaining()).to.be.closeTo(174,0.5)
 
     it 'should be able to download text files properly', (done)->
-      callback = (buf, start,end) ->
-        buffer = buf.slice(start,end)
+      Fiber( ->
+        client.downloadTree.set("Dp4K3RLQTW2ilY1lo81Iww-0",1)
+        res = download(client,'/Yz_YeHx0RLqIXWEQo6V8Eg/Dp4K3RLQTW2ilY1lo81Iww','file.ext',0,321,322, true).wait()
+        buffer = res.buffer.slice(start,end)
+        start = res.start
+        end = res.end
         expect(end-start).to.equal(322)
-        # expect( md5(buf.slice(start,end)) ).to.equal('599b9f55c2474fcea19e2147fe91e8ab')
-        expect( md5(buf.slice(start,end)) ).to.equal('599b9f55c2474fcea19e2147fe91e8ab')
+        expect( md5(buffer.slice(start,end)) ).to.equal('599b9f55c2474fcea19e2147fe91e8ab')
         done()
-      client.download('/Yz_YeHx0RLqIXWEQo6V8Eg/Dp4K3RLQTW2ilY1lo81Iww','file.ext',0,321,322, true, callback)
-
-    it 'should be able to download binary files properly', (done)->
-      callback = (buf, start,end, data) ->
-        newbuf = buf.slice( start,end)
+      ).run()
+    it 'should be able to download binary files properly', (done)->        
+      Fiber( ->
+        client.downloadTree.set("NJgui8PDQa-v51BIW1Pj3Q-0",1)
+        res = download(client,'/m__k6DI5SGOHivKQlBuqyw/NJgui8PDQa-v51BIW1Pj3Q','file.ext',0,1378573,1378574, true).wait()
+        newbuf = res.buffer.slice( start,end)
+        start = res.start
+        end = res.end
         expect(end-start).to.equal(1378574)
         expect(newbuf.length).to.equal(1378574)
         expect( md5(newbuf) ).to.equal('4c898a28359a0aa8962adb0fc9661906')
         done()
-      # file = '/tmp/node-bitcasa/file.ext-0-1378573'
-      # if fs.existsSync(file)
-      #   fs.unlink(file)
-      client.download('/m__k6DI5SGOHivKQlBuqyw/NJgui8PDQa-v51BIW1Pj3Q','file.ext',0,1378573,1378574, true, callback)
-
+      ).run()
     it 'should download large files properly', () ->
       buffer = new Buffer 69695838
       callback = (dataBuf, start, end)->
