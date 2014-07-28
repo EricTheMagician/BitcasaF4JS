@@ -43,7 +43,6 @@ describe 'BitcasaClient instance', ->
 
     it 'should be able to download text files properly', (done)->
       Fiber( ->
-        client.downloadTree.set("Dp4K3RLQTW2ilY1lo81Iww-0",1)
         res = download(client,'/Yz_YeHx0RLqIXWEQo6V8Eg/Dp4K3RLQTW2ilY1lo81Iww','file.ext',0,321,322, true).wait()
         buffer = res.buffer.slice(start,end)
         start = res.start
@@ -54,7 +53,6 @@ describe 'BitcasaClient instance', ->
       ).run()
     it 'should be able to download binary files properly', (done)->
       Fiber( ->
-        client.downloadTree.set("NJgui8PDQa-v51BIW1Pj3Q-0",1)
         res = download(client,'/m__k6DI5SGOHivKQlBuqyw/NJgui8PDQa-v51BIW1Pj3Q','file.ext',0,1378573,1378574, true).wait()
         newbuf = res.buffer.slice( start,end)
         start = res.start

@@ -106,6 +106,8 @@ class BitcasaClient
             end: readSize + 1
           client.logger.log('silly',"file exists: #{location}--#{buffer.slice(start,end).length}")
           return cb(null,args)
+        else
+          cb(null,null)
       else
         client.logger.log("info", "#{name} - downloading #{chunkStart}-#{chunkEnd}")
         if client.rateLimit.tryRemoveTokens(1)
