@@ -118,6 +118,7 @@ class BitcasaClient
               Range: "bytes=#{chunkStart}-#{chunkEnd}"
           console.log "download requests: #{client.rateLimit.getTokensRemaining()}"
           callback = (data,response) ->
+            failed = true #assume that the download failed
             client.logger.log("debug", "downloaded: #{location} - #{chunkEnd-chunkStart} -- limit #{client.rateLimit.getTokensRemaining()}")
             if data.length == 14 and data.toString() == "invalid range"
               client.logger.log("debug", "failed to download #{location} -- invalid range")
@@ -127,7 +128,6 @@ class BitcasaClient
               client.download(client, path, name, start,end,maxSize, recurse, cb )
             else if  data.length < (chunkStart - chunkEnd + 1)
               client.logger.log("debug", "failed to download #{location} -- #{data.length} - size mismatch")
-              client.download(client, path, name, start,end,maxSize, recurse, cb )
             else
               client.logger.log("debug", "successfully to download #{location}")
               fs.writeFileSync(location,data)
@@ -135,7 +135,13 @@ class BitcasaClient
                 buffer: data,
                 start: start - chunkStart,
                 end : end+1-chunkStart
+              failed = false
               cb(null, args )
+            if recurse and failed  #only retry to donwload if it did fail and if it is recursing
+              client.download(client, path, name, start,end,maxSize, recurse, cb )
+            else if failed and not recurse
+              client.downloadTree.delete("#{baseName}-#{chunkStart}")
+
           client.logger.log "debug", "starting to download #{location}"
           req = client.client.methods.downloadChunk args,callback
           req.on 'error', (err) ->
