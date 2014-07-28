@@ -13,7 +13,7 @@ wait = Future.wait
 
 logger = new (winston.Logger)({
     transports: [
-      new (winston.transports.Console)({ level: 'info' }),
+      new (winston.transports.Console)({ level: 'debug' }),
     ]
   })
 
@@ -52,7 +52,7 @@ describe 'BitcasaClient instance', ->
         expect( md5(buffer.slice(start,end)) ).to.equal('599b9f55c2474fcea19e2147fe91e8ab')
         done()
       ).run()
-    it 'should be able to download binary files properly', (done)->        
+    it 'should be able to download binary files properly', (done)->
       Fiber( ->
         client.downloadTree.set("NJgui8PDQa-v51BIW1Pj3Q-0",1)
         res = download(client,'/m__k6DI5SGOHivKQlBuqyw/NJgui8PDQa-v51BIW1Pj3Q','file.ext',0,1378573,1378574, true).wait()

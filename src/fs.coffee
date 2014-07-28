@@ -13,6 +13,8 @@ else
 f4js = require 'fuse4js'
 winston = require 'winston'
 os = require 'os'
+Fiber = require 'fibers'
+
 logger = new (winston.Logger)({
     transports: [
       new (winston.transports.Console)({ level: 'info' }),
@@ -61,36 +63,20 @@ chmod = (path,mod, cb) ->
 #  *     A positive value represents the number of bytes actually read.
 #  */
 read = (path, offset, len, buf, fh, cb) ->
-  logger.log('silly', "reading file #{path}")
+  logger.log('silly', "reading file #{path} - (#{offset}-#{offset+len-1})")
   folderTree =  client.folderTree
   if folderTree.has(path)
-    file = client.folderTree.get(path)
-
-    #check to see if part of the file is being downloaded or in use
     chunkStart = Math.floor((offset)/client.chunkSize) * client.chunkSize
-    end = Math.min(offset + len - 1, file.size )
-    chunkEnd = Math.min( Math.ceil(end/client.chunkSize) * client.chunkSize, file.size)-1 #and make sure that it's not bigger than the actual file
-    if client.downloadTree.has("#{path}-#{chunkStart}")
-      fn = ->
-        read(path, offset, len, buf, fh, cb)
-      setTimeout(fn, 20)
-      return
-    else
-      client.downloadTree.set("#{path}-#{chunkStart}", 1)
-
-
-
     callback = (dataBuf,dataStart,dataEnd) ->
-
       try
         dataBuf.copy(buf,0,dataStart,dataEnd);
-        client.downloadTree.delete("#{path}-#{chunkStart}")
-        return cb(dataEnd-dataStart + 1);
+        p = "#{file.bitcasaBasename}-#{chunkStart}"
+        client.logger.log "silly", "logging from read callback #{dataEnd-dataStart} -- #{  client.downloadTree.has(p)}"
+        return cb(dataEnd-dataStart);
       catch error
         console.log("failed reading:", error)
-
+    file = client.folderTree.get(path)
     file.download(offset, offset+len-1,callback)
-
 
   else
     return cb(-errnoMap.ENOENT)

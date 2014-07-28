@@ -6,8 +6,24 @@ pth = require 'path'
 fs = require 'fs'
 memoize = require 'memoizee'
 d = require('d');
+Future = require('fibers/future')
+Fiber = require 'fibers'
+wait = Future.wait
 
-memoizeMethods = require('memoizee/methods')
+#wrap async files to sync mode using fibers
+writeFile = Future.wrap(fs.writeFile)
+open = Future.wrap(fs.open)
+read = Future.wrap(fs.read)
+#since fs.exists does not return an error, wrap it using an error
+_exists = (path, cb) ->
+  fs.exists path, (success)->
+    cb(null,success)
+exists = Future.wrap(_exists)
+
+_close = (path,cb) ->
+  fs.close path, (err) ->
+    cb(err, true)
+close = Future.wrap(_close)
 
 #for mocha testing
 if Object.keys( module.exports ).length == 0
@@ -16,6 +32,8 @@ if Object.keys( module.exports ).length == 0
 else
   BitcasaFolder = module.exports.folder
 
+
+memoizeMethods = require('memoizee/methods')
 existsMemoized = memoize(fs.existsSync, {maxAge:5000})
 class BitcasaClient
   constructor: (@id, @secret, @redirectUrl, @logger, @accessToken = null, @chunkSize = 1024*1024, @advancedChunks = 10, @cacheLocation = '/tmp/node-bitcasa') ->
@@ -52,8 +70,7 @@ class BitcasaClient
   # callback should take 3 parameters:
   #   a buffer, where to start and where to end.
   #   the buffer is where the data is located
-  download: (path, name, start,end,maxSize, recurse, cb ) ->
-    client = @
+  download: (client, path, name, start,end,maxSize, recurse, cb ) ->
     #round the amount of bytes to be downloaded to multiple chunks
     chunkStart = Math.floor((start)/client.chunkSize) * client.chunkSize
     end = Math.min(end,maxSize)
@@ -64,36 +81,34 @@ class BitcasaClient
       client.logger.log("debug", "number chunks requested greater than 1 - (start,end) = (#{start}-#{end})")
       client.logger.log("debug", "number chunks requested greater than 1 - (chunkStart,chunkEnd) = (#{chunkStart}-#{chunkEnd})")
 
-    #save location
-    location = pth.join(client.cacheLocation,"#{pth.basename(path)}-#{chunkStart}-#{chunkEnd}")
-    client.logger.log('silly',"cache location: #{location}")
+    Fiber( ->
+      baseName = pth.basename path
+      #save location
+      # console.log client.cacheLocation
+      # console.log "#{baseName}-#{chunkStart}-#{chunkEnd}"
+      location = pth.join(client.cacheLocation,"#{baseName}-#{chunkStart}-#{chunkEnd}")
+      client.logger.log('silly',"cache location: #{location}")
 
-    recursive = (rStart, rEnd) ->
-      rEnd = Math.min( Math.ceil(rEnd/client.chunkSize) * client.chunkSize, maxSize)-1
-      if (rEnd + 1) <= maxSize and rEnd > rStart
-        parentPath = client.bitcasaTree.get(pth.dirname(path))
-        filePath = pth.join(parentPath,name)
-        cache = pth.join(client.cacheLocation,"#{pth.basename(path)}-#{rStart}-#{rEnd-1}")
-        unless existsMemoized(cache)
-          unless client.downloadTree.has("#{filePath}-#{rStart}")
-            client.logger.log("silly", "#{filePath}-#{rStart}-#{rEnd - 1} -- exists: - #{existsMemoized("#{filePath}-#{rStart}")} - has: #{client.downloadTree.has("#{filePath}-#{rStart}")} - recursing at #{chunkStart} - (#{rStart}-#{rEnd})")
-            client.downloadTree.set("#{filePath}-#{rStart}",1)
-            callback = ->
-                client.downloadTree.delete("#{filePath}-#{rStart}")
-            client.download(path, name, rStart,rEnd,maxSize, false, callback )
 
-    #check if the data has been cached or not
-    #otherwise, download from the web
-    if fs.existsSync(location)
-      readSize = end - start;
-      buffer = new Buffer(readSize+1)
-      fd = fs.openSync(location,'r')
-      bytesRead = fs.readSync(fd,buffer,0,readSize+1, start-chunkStart)
-      fs.closeSync(fd)
-      cb(buffer, 0, readSize+1)
-    else
-      client.logger.log("info", "#{name} - downloading #{chunkStart}-#{chunkEnd}")
-      if @rateLimit.tryRemoveTokens(1)
+      #check if the data has been cached or not
+      #otherwise, download from the web
+
+      if fs.existsSync(location)
+        if recurse
+          readSize = end - start;
+          buffer = new Buffer(readSize+1)
+          fd = fs.openSync(location,'r')
+          bytesRead = fs.readSync(fd,buffer,0,readSize+1, start-chunkStart)
+          fs.closeSync(fd)
+          args =
+            buffer: buffer
+            start: 0
+            end: readSize + 1
+          client.logger.log('silly',"file exists: #{location}--#{buffer.slice(start,end).length}")
+          return cb(null,args)
+      else
+        client.logger.log("info", "#{name} - downloading #{chunkStart}-#{chunkEnd}")
+        if client.rateLimit.tryRemoveTokens(1)
           args =
             "path":
               "path": path
@@ -104,31 +119,27 @@ class BitcasaClient
             client.logger.log("debug", "downloaded: #{location} - #{chunkEnd-chunkStart} -- limit #{client.rateLimit.getTokensRemaining()}")
             if data.length == 14 and data.toString() == "invalid range"
               client.logger.log("debug", "failed to download #{location} -- invalid range")
-              client.download(path, name, start,end,maxSize, recurse, cb )
+              client.download(client, path, name, start,end,maxSize, recurse, cb )
             else if not (data instanceof Buffer)
               client.logger.log("debug", "failed to download #{location} -- typeof data: #{typeof data} -- length #{data.length} -- invalid type")
-              client.download(path, name, start,end,maxSize, recurse, cb )
+              client.download(client, path, name, start,end,maxSize, recurse, cb )
             else if  data.length < (chunkStart - chunkEnd + 1)
               client.logger.log("debug", "failed to download #{location} -- #{data.length} - size mismatch")
-              client.download(path, name, start,end,maxSize, recurse, cb )
+              client.download(client, path, name, start,end,maxSize, recurse, cb )
             else
               client.logger.log("debug", "successfully to download #{location}")
               fs.writeFileSync(location,data)
-              cb(data, start - chunkStart, end+1 - chunkStart )
+              args =
+                buffer: data,
+                start: start - chunkStart,
+                end : end+1-chunkStart
+              cb(null, args )
           client.logger.log "debug", "starting to download #{location}"
           req = client.client.methods.downloadChunk args,callback
           req.on 'error', (err) ->
             console.log "there was an error with request #{location}, #{err}"
-      else
-        fn =->
-          client.download(path, name, start,end,maxSize, recurse, cb )
-        setTimeout(fn, 5000)
-    if recurse
-      #download the last chunk in advance
-      maxStart = Math.floor( maxSize / client.chunkSize) * client.chunkSize
-      recursive maxStart, maxSize
-      #download the next few chunks in advance
-      recursive(chunkStart + num*client.chunkSize, chunkEnd + 1 + num*client.chunkSize)  for num in [1..client.advancedChunks]
+
+    ).run()
 Object.defineProperties(BitcasaClient.prototype, memoizeMethods({
   getFolders: d( (path,cb)->
     client = @
