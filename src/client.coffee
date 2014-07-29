@@ -122,10 +122,8 @@ class BitcasaClient
             client.logger.log("debug", "downloaded: #{location} - #{chunkEnd-chunkStart} -- limit #{client.rateLimit.getTokensRemaining()}")
             if data.length == 14 and data.toString() == "invalid range"
               client.logger.log("debug", "failed to download #{location} -- invalid range")
-              client.download(client, path, name, start,end,maxSize, recurse, cb )
             else if not (data instanceof Buffer)
               client.logger.log("debug", "failed to download #{location} -- typeof data: #{typeof data} -- length #{data.length} -- invalid type -- content-type: #{response.headers["content-type"]} -- encoding #{response.headers["content-encoding"]}")
-              client.download(client, path, name, start,end,maxSize, recurse, cb )
             else if  data.length < (chunkStart - chunkEnd + 1)
               client.logger.log("debug", "failed to download #{location} -- #{data.length} - size mismatch")
             else
