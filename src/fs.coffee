@@ -26,6 +26,11 @@ client = new BitcasaClient(config.clientId, config.secret, config.redirectUrl, l
 #get folder attributes in the background
 client.getFolders "/"
 
+if config.nodeTimeAccount
+  require('nodetime').profile({
+    accountKey: config.nodeTimeAccount
+  })
+
 
 #http://lxr.free-electrons.com/source/include/uapi/asm-generic/errno-base.h#L23
 errnoMap =
