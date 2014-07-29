@@ -88,7 +88,7 @@ read = (path, offset, len, buf, fh, cb) ->
 
 
 init = (cb) ->
-  logger.log('info', 'Starting fuse4js on node-bitcasa')
+  logger.log('info', 'Starting fuse4js on BitcasaFuse4JS')
   # logger.log('info', "client token #{client.accessToken}")
   return cb(0)
 

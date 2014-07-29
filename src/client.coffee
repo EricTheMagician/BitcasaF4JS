@@ -109,14 +109,14 @@ class BitcasaClient
         else
           cb(null,null)
       else
-        client.logger.log("info", "#{name} - downloading #{chunkStart}-#{chunkEnd}")
+        client.logger.log("debug", "#{name} - downloading #{chunkStart}-#{chunkEnd}")
         if client.rateLimit.tryRemoveTokens(1)
           args =
             "path":
               "path": path
             headers:
               Range: "bytes=#{chunkStart}-#{chunkEnd}"
-          console.log "download requests: #{client.rateLimit.getTokensRemaining()}"
+          client.logged.log "debug", "download requests: #{client.rateLimit.getTokensRemaining()}"
           callback = (data,response) ->
             failed = true #assume that the download failed
             client.logger.log("debug", "downloaded: #{location} - #{chunkEnd-chunkStart} -- limit #{client.rateLimit.getTokensRemaining()}")
@@ -136,11 +136,15 @@ class BitcasaClient
                 start: start - chunkStart,
                 end : end+1-chunkStart
               failed = false
-              cb(null, args )
+
             if recurse and failed  #only retry to donwload if it did fail and if it is recursing
               client.download(client, path, name, start,end,maxSize, recurse, cb )
             else if failed and not recurse
               client.downloadTree.delete("#{baseName}-#{chunkStart}")
+
+            if not failed
+              cb(null, args )
+            return failed
 
           client.logger.log "debug", "starting to download #{location}"
           req = client.client.methods.downloadChunk args,callback
