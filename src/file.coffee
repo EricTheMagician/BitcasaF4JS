@@ -62,9 +62,8 @@ class BitcasaFile
 
       #download chunks
       data = download(client, file.bitcasaPath, file.name, start,end,file.size,true)
-      BitcasaFile.recursive(client,file, chunkStart + i * client.chunkSize, chunkEnd + i * client.chunkSize) for i in [1..client.advancedChunks]
       BitcasaFile.recursive(client,file, Math.floor(file.size / client.chunkSize) * client.chunkSize, file.size)
-
+      BitcasaFile.recursive(client,file, chunkStart + i * client.chunkSize, chunkEnd + i * client.chunkSize) for i in [1..client.advancedChunks]
       data = data.wait()
       client.logger.log "silly", "after downloading - #{data.buffer.length} - #{data.start} - #{data.end}"
       client.downloadTree.delete("#{file.bitcasaBasename}-#{chunkStart}")
