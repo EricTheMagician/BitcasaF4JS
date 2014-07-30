@@ -7,7 +7,7 @@ fs = require 'fs'
 sys = require('sys')
 exec = require('child_process').exec;
 
-describe 'FUSE filesystem', ->
+describe.skip 'FUSE filesystem', ->
 
   it 'should be mountable', (done)->
     require '../src/fs.coffee'
