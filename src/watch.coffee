@@ -30,7 +30,7 @@ sortStats = (x,y) ->
     when diff == 0 then return 0
     else return 1
 
-readdir = Future.wrap(fs.readdir)
+readdir = Future.wrap(fs.readdir,2)
 _statfs = (path, cb) ->
   fs.stat path, (err,attr)->
     cb(err,attr )
