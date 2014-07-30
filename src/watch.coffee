@@ -30,7 +30,7 @@ sortStats = (x,y) ->
     when diff == 0 then return 0
     else return 1
 
-readdir = Future.wrap(fs.readdir,2)
+readdir = Future.wrap(fs.readdir)
 _statfs = (path, cb) ->
   fs.stat path, (err,attr)->
     cb(err,attr )
@@ -63,6 +63,6 @@ watcher = fs.watch location, (event, filename) ->
             totalSize -= info[1].size
             unlink(pth.join(location,info[0])).wait()
       catch error
-        logger.log("error", "Watcher: there was a problem: #{error}")
-        locked = false
+        logger.log("debug", "Watcher: there was a problem: #{error}")
+      locked = false
     ).run()
