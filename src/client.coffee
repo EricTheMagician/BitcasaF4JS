@@ -116,7 +116,7 @@ class BitcasaClient
               "path": path
             headers:
               Range: "bytes=#{chunkStart}-#{chunkEnd}"
-          client.logged.log "debug", "download requests: #{client.rateLimit.getTokensRemaining()}"
+          client.logger.log "debug", "download requests: #{client.rateLimit.getTokensRemaining()}"
           callback = (data,response) ->
             failed = true #assume that the download failed
             client.logger.log("debug", "downloaded: #{location} - #{chunkEnd-chunkStart} -- limit #{client.rateLimit.getTokensRemaining()}")
