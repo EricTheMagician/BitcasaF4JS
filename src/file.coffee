@@ -29,8 +29,8 @@ class BitcasaFile
         unless client.downloadTree.has("#{baseName}-#{rStart}")
           client.logger.log("silly", "#{baseName}-#{rStart}-#{rEnd - 1} -- has: #{client.downloadTree.has("#{filePath}-#{rStart}")} - recursing with - (#{rStart}-#{rEnd})")
           client.downloadTree.set("#{baseName}-#{rStart}",1)
-          _callback = ->
-              client.downloadTree.delete("#{baseName}-#{rStart}")
+          _callback = (err, data) ->
+            client.downloadTree.delete("#{baseName}-#{rStart}")
           client.download(client, file.bitcasaPath, file.name, rStart,rEnd,file.size, false, _callback )
 
   # if recurse
@@ -51,8 +51,6 @@ class BitcasaFile
 
     Fiber( ->
       fiber = Fiber.current
-      BitcasaFile.recursive(client,file, chunkStart + i * client.chunkSize, chunkEnd + i * client.chunkSize) for i in [1..client.advancedChunks]
-      BitcasaFile.recursive(client,file, Math.floor(file.size / client.chunkSize) * client.chunkSize, file.size)
       while client.downloadTree.has("#{file.bitcasaBasename}-#{chunkStart}")
         fn = ->
           fiber.run()
@@ -61,7 +59,13 @@ class BitcasaFile
       client.downloadTree.set("#{file.bitcasaBasename}-#{chunkStart}", 1)
       download = Future.wrap(client.download)
       client.logger.log "silly", "#{file.name} - (#{start}-#{end})"
-      data = download(client, file.bitcasaPath, file.name, start,end,file.size,true).wait()
+
+      #download chunks
+      data = download(client, file.bitcasaPath, file.name, start,end,file.size,true)
+      BitcasaFile.recursive(client,file, chunkStart + i * client.chunkSize, chunkEnd + i * client.chunkSize) for i in [1..client.advancedChunks]
+      BitcasaFile.recursive(client,file, Math.floor(file.size / client.chunkSize) * client.chunkSize, file.size)
+
+      data = data.wait()
       client.logger.log "silly", "after downloading - #{data.buffer.length} - #{data.start} - #{data.end}"
       client.downloadTree.delete("#{file.bitcasaBasename}-#{chunkStart}")
       cb( data.buffer, data.start, data.end )
