@@ -124,6 +124,8 @@ class BitcasaClient
               client.logger.log("debug", "failed to download #{location} -- invalid range")
             else if not (data instanceof Buffer)
               client.logger.log("debug", "failed to download #{location} -- typeof data: #{typeof data} -- length #{data.length} -- invalid type -- content-type: #{response.headers["content-type"]} -- encoding #{response.headers["content-encoding"]}")
+              client.logger.log("debug", data)
+              console.log "there was an error downloading", data
             else if  data.length < (chunkStart - chunkEnd + 1)
               client.logger.log("debug", "failed to download #{location} -- #{data.length} - size mismatch")
             else
