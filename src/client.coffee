@@ -119,17 +119,11 @@ class BitcasaClient
               client.logger.log("debug", "failed to download #{location} -- invalid range")
             else if not (data instanceof Buffer)
               client.logger.log("debug", "failed to download #{location} -- typeof data: #{typeof data} -- length #{data.length} -- invalid type -- content-type: #{response.headers["content-type"]} -- encoding #{response.headers["content-encoding"]}")
-              client.logger.log("debug", data)
-              console.log "there was an error downloading", data
             else if  data.length < (chunkStart - chunkEnd + 1)
               client.logger.log("debug", "failed to download #{location} -- #{data.length} - size mismatch")
             else
-              client.logger.log("debug", "successfully to download #{location}")
+              client.logger.log("debug", "successfully downloaded #{location}")
               fs.writeFileSync(location,data)
-              args =
-                buffer: data,
-                start: start - chunkStart,
-                end : end+1-chunkStart
               failed = false
 
             if recurse and failed  #only retry to donwload if it did fail and if it is recursing
@@ -138,6 +132,10 @@ class BitcasaClient
               client.downloadTree.delete("#{baseName}-#{chunkStart}")
               cb(null, null)
             else if not failed
+              args =
+                buffer: data,
+                start: start - chunkStart,
+                end : end+1-chunkStart
               client.downloadTree.delete("#{baseName}-#{chunkStart}")
               cb(null, args )
             return failed
@@ -151,7 +149,8 @@ class BitcasaClient
           client.logger.log "debug", "starting to download #{location}"
           req = client.client.methods.downloadChunk args,callback
           req.on 'error', (err) ->
-            console.log "there was an error with request #{location}, #{err}"
+            client.logger.log "there was an error with request #{location}, #{err}"
+            client.download(client, path, name, start,end,maxSize, recurse, cb )
 
     ).run()
 Object.defineProperties(BitcasaClient.prototype, memoizeMethods({
