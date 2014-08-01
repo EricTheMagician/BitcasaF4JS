@@ -132,8 +132,13 @@ class BitcasaClient
               fs.writeFileSync(location,data)
               failed = false
 
-            if recurse and failed  #only retry to donwload if it did fail and if it is recursing
-              client.client.methods.downloadChunk args,callback
+            if recurse and failed  #let the fs decide what to do.
+              args =
+                buffer: new Buffer(0),
+                start: 0,
+                end : 0
+              cb(null,args)
+
             else if (failed) and (not recurse)
               client.downloadTree.delete("#{baseName}-#{chunkStart}")
               cb(null, null)
