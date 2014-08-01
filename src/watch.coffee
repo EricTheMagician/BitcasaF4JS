@@ -29,8 +29,7 @@ sortStats = (x,y) ->
     when diff < 0 then return -1
     when diff == 0 then return 0
     else return 1
-
-readdir = Future.wrap(fs.readdir)
+readdir = Future.wrap(fs.readdir,1)
 _statfs = (path, cb) ->
   fs.stat path, (err,attr)->
     cb(err,attr )
@@ -47,7 +46,7 @@ watcher = fs.watch location, (event, filename) ->
   logger.log("silly", "Watcher: event #{event} triggered by #{filename} - status: #{locked} - #{not locked}")
   if locked == false
     locked = true
-    Fiber( ->
+    Fiber( ()->
       try
         files = readdir(location).wait()
         stats = (statfs(pth.join(location,file)) for file in files)
