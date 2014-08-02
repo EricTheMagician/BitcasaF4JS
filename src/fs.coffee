@@ -111,6 +111,7 @@ release =  (path, fh, cb) ->
 statfs= (cb) ->
   return cb(0, {
         bsize: config.chunkSize/2,
+        iosize: config.chunkSize,
         frsize: 65536,
         blocks: 1000000,
         bfree: 1000000,
@@ -178,7 +179,7 @@ try
   console.log 'attempting to start f4js'
   opts = switch os.type()
     when 'Linux' then  ["-o", "allow_other"]
-    when 'Darwin' then  ["-o", "allow_other", "-o", "noappledouble", "-o"]#, "-odaemon_timeout=300"]
+    when 'Darwin' then  ["-o", "allow_other", "-o", "noappledouble"]#, "-odaemon_timeout=300"]
     else []
   f4js.start(config.mountPoint, handlers, false, opts);
   logger.log('info', "mount point: #{config.mountPoint}")
