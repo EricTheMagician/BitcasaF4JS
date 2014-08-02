@@ -113,7 +113,7 @@ class BitcasaClient
         if client.rateLimit.tryRemoveTokens(1)
           client.logger.log "debug", "download requests: #{client.rateLimit.getTokensRemaining()}"
           args =
-            timeout: 45000,
+            timeout: 45000
             "path":
               "path": path
             headers:
@@ -156,11 +156,12 @@ class BitcasaClient
           client.logger.log "debug", "starting to download #{location}"
           req = client.client.methods.downloadChunk args,callback
           req.on 'error', (err) ->
+            client.logger.log("error","there was an error downloading: #{err}")
             args =
               buffer: new Buffer(0),
               start: 0,
               end : 0
-            cb(null,args)            
+            cb(null,args)
 
     ).run()
 Object.defineProperties(BitcasaClient.prototype, memoizeMethods({
