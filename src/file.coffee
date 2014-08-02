@@ -54,7 +54,7 @@ class BitcasaFile
       while client.downloadTree.has("#{file.bitcasaBasename}-#{chunkStart}")
         fn = ->
           fiber.run()
-        setTimeout fn, 50
+        setTimeout fn, 100
         Fiber.yield()
       client.downloadTree.set("#{file.bitcasaBasename}-#{chunkStart}", 1)
       download = Future.wrap(client.download)

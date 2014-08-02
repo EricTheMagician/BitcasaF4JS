@@ -162,6 +162,17 @@ class BitcasaClient
               start: 0,
               end : 0
             cb(null,args)
+        else
+          if recurse
+            args =
+              buffer: buffer
+              start: 0
+              end: readSize + 1
+            client.logger.log "debug", "downloading file failed: out of tokens"
+            cb null, args
+          else
+            cb null, null
+
 
     ).run()
 Object.defineProperties(BitcasaClient.prototype, memoizeMethods({
