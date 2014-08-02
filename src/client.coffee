@@ -93,13 +93,13 @@ class BitcasaClient
       #check if the data has been cached or not
       #otherwise, download from the web
 
-      if fs.existsSync(location)
+      if exists(location).wait()
         if recurse
           readSize = end - start;
           buffer = new Buffer(readSize+1)
-          fd = fs.openSync(location,'r')
-          bytesRead = fs.readSync(fd,buffer,0,readSize+1, start-chunkStart)
-          fs.closeSync(fd)
+          fd = open(location,'r').wait()
+          bytesRead = read(fd,buffer,0,readSize+1, start-chunkStart).wait()
+          close(fd)
           args =
             buffer: buffer
             start: 0
@@ -130,7 +130,7 @@ class BitcasaClient
               client.logger.log("debug", "failed to download #{location} -- #{data.length} - size mismatch")
             else
               client.logger.log("debug", "successfully downloaded #{location}")
-              fs.writeFileSync(location,data)
+              writeFile(location,data)
               failed = false
 
             if recurse and failed  #let the fs decide what to do.
