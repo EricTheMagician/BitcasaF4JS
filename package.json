@@ -22,7 +22,7 @@
     "fuse4js": "~0.1.9",
     "limiter": "~1.0.5",
     "memoizee": "~0.3.5",
-    "node-rest-client": "git+http://github.com/thejinx0r/node-rest-client",
+    "node-rest-client": "git+http://github.com/thejinx0r/node-rest-client#e189708160e41d4d4ee2377b8415c7cd51d3037a",
     "nodetime": "~0.8.15",
     "winston": "~0.7.3"
   },
