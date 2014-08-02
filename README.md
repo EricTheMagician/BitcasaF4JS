@@ -7,6 +7,7 @@ This is a simple (incomplete) filesystem written in NodeJS to mount Bitcasa as a
 
 ###Requirements
 Linux / MacOSX with FUSE.
+
 **Fuse is not compatible with Windows.**
 
 NodeJS:
@@ -19,10 +20,8 @@ NodeJS:
 6. cd build
 7. copy the config.json.sample to config.json and edit it.
 8. node fs.js
+9. optional: node watch.js
 
 
 ##Todo
-1. ~~Fix large file downloading~~
-2. ~~Implement parallel downloading of multiple chunks~~
-3. Save the file tree before exiting.
-4. Implement file uploads: this will be implemented after the new upload server is functioning with pause/resume uploading
+1. Implement file uploads: this will be implemented after the new upload server is functioning with pause/resume uploading
