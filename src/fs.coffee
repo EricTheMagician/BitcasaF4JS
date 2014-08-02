@@ -179,7 +179,7 @@ try
   console.log 'attempting to start f4js'
   opts = switch os.type()
     when 'Linux' then  ["-o", "allow_other"]
-    when 'Darwin' then  ["-o", "allow_other", "-o", "noappledouble"]#, "-odaemon_timeout=300"]
+    when 'Darwin' then  ["-o", "allow_other", "-o", "noappledouble", "-o", "daemon_timeout=0"]
     else []
   f4js.start(config.mountPoint, handlers, false, opts);
   logger.log('info', "mount point: #{config.mountPoint}")
