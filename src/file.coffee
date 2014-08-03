@@ -48,26 +48,69 @@ class BitcasaFile
     chunkStart = Math.floor((start)/client.chunkSize) * client.chunkSize
     end = Math.min(end, file.size )
     chunkEnd = Math.min( Math.ceil(end/client.chunkSize) * client.chunkSize, file.size)-1 #and make sure that it's not bigger than the actual file
+    nChunks = (chunkEnd - chunkStart)/client.chunkSize
+    download = Future.wrap(client.download)
+    if nChunks < 1
+      Fiber( ->
+        fiber = Fiber.current
+        while client.downloadTree.has("#{file.bitcasaBasename}-#{chunkStart}")
+          fn = ->
+            fiber.run()
+          setTimeout fn, 100
+          Fiber.yield()
+        client.downloadTree.set("#{file.bitcasaBasename}-#{chunkStart}", 1)
+        client.logger.log "silly", "#{file.name} - (#{start}-#{end})"
 
-    Fiber( ->
-      fiber = Fiber.current
-      while client.downloadTree.has("#{file.bitcasaBasename}-#{chunkStart}")
-        fn = ->
-          fiber.run()
-        setTimeout fn, 100
-        Fiber.yield()
-      client.downloadTree.set("#{file.bitcasaBasename}-#{chunkStart}", 1)
-      download = Future.wrap(client.download)
-      client.logger.log "silly", "#{file.name} - (#{start}-#{end})"
+        #download chunks
+        data = download(client, file.bitcasaPath, file.name, start,end,file.size,true)
+        if (chunkEnd - chunkStart) / client.chunkSize <= 1
+          BitcasaFile.recursive(client,file, Math.floor(file.size / client.chunkSize) * client.chunkSize, file.size)
+        BitcasaFile.recursive(client,file, chunkStart + i * client.chunkSize, chunkEnd + i * client.chunkSize) for i in [1..client.advancedChunks]
+        data = data.wait()
+        client.downloadTree.delete("#{file.bitcasaBasename}-#{chunkStart}")
+        cb( data.buffer, data.start, data.end )
+        client.logger.log "silly", "after downloading - #{data.buffer.length} - #{data.start} - #{data.end}"
+      ).run()
+    else if nChunks < 2
+      buffer = new Buffer(end-start + 1)
+      end1 = chunkStart + client.chunkSize - 1
+      start2 = chunkStart + client.chunkSize
+      Fiber( ->
+        fiber = Fiber.current
+        while client.downloadTree.has("#{file.bitcasaBasename}-#{chunkStart}")
+          fn = ->
+            fiber.run()
+          setTimeout fn, 100
+          Fiber.yield()
+        data1 = download(client, file.bitcasaPath, file.name, start, end1,file.size, true)
+        client.downloadTree.set("#{file.bitcasaBasename}-#{chunkStart}", 1)
 
-      #download chunks
-      data = download(client, file.bitcasaPath, file.name, start,end,file.size,true)
-      if (chunkEnd - chunkStart) / client.chunkSize <= 1
-        BitcasaFile.recursive(client,file, Math.floor(file.size / client.chunkSize) * client.chunkSize, file.size)
-      BitcasaFile.recursive(client,file, chunkStart + i * client.chunkSize, chunkEnd + i * client.chunkSize) for i in [1..client.advancedChunks]
-      data = data.wait()
-      client.downloadTree.delete("#{file.bitcasaBasename}-#{chunkStart}")
-      cb( data.buffer, data.start, data.end )
-      client.logger.log "silly", "after downloading - #{data.buffer.length} - #{data.start} - #{data.end}"
-    ).run()
+        while client.downloadTree.has("#{file.bitcasaBasename}-#{chunkStart+client.chunkSize}")
+          fn = ->
+            fiber.run()
+          setTimeout fn, 100
+          Fiber.yield()
+
+        data2 = download(client, file.bitcasaPath, file.name, start2, end,file.size, true)
+        client.downloadTree.set("#{file.bitcasaBasename}-#{chunkStart+client.chunkSize}", 1)
+
+        data1 = data1.wait()
+        client.downloadTree.delete("#{file.bitcasaBasename}-#{chunkStart}")
+        data2 = data2.wait()
+        client.downloadTree.delete("#{file.bitcasaBasename}-#{chunkStart+client.chunkSize}", 1)
+
+        data1.buffer.copy(buffer,0,data1.start, data1.end)
+        data2.buffer.copy(buffer,start2, data2.start, data2.end)
+
+        cb( buffer, 0, buffer.length )
+        client.logger.log "silly", "after downloading - #{data.buffer.length} - #{data.start} - #{data.end}"
+      ).run()
+    else
+      client.logger.log("error", "number of chunks greater than 2 - (#{start}-#{end})");
+      buffer = new Buffer(0)
+      r =
+        buffer: buffer
+        start: 0
+        end: 0
+      cb(null, r)
 module.exports.file = BitcasaFile
