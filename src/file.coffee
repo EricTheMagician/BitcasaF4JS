@@ -103,7 +103,6 @@ class BitcasaFile
         data2.buffer.copy(buffer,(start2 % client.chunkSize), data2.start, data2.end)
 
         cb( buffer, 0, buffer.length )
-        client.logger.log "silly", "after downloading - #{data.buffer.length} - #{data.start} - #{data.end}"
       ).run()
     else
       client.logger.log("error", "number of chunks greater than 2 - (#{start}-#{end})");
