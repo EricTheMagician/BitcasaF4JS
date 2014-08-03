@@ -113,7 +113,7 @@ class BitcasaClient
         if client.rateLimit.tryRemoveTokens(1)
           client.logger.log "debug", "download requests: #{client.rateLimit.getTokensRemaining()}"
           args =
-            timeout: 45000
+            timeout: 120000
             "path":
               "path": path
             headers:
