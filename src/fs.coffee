@@ -110,8 +110,8 @@ release =  (path, fh, cb) ->
 
 statfs= (cb) ->
   return cb(0, {
-        bsize: Math.floor(config.chunkSize/4),
-        iosize: Math.floor(config.chunkSize/4),
+        bsize: 262144,
+        iosize: 262144,
         frsize: 65536,
         blocks: 1000000,
         bfree: 1000000,
