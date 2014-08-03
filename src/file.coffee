@@ -100,7 +100,7 @@ class BitcasaFile
         client.downloadTree.delete("#{file.bitcasaBasename}-#{chunkStart+client.chunkSize}", 1)
 
         data1.buffer.copy(buffer,0,data1.start, data1.end)
-        data2.buffer.copy(buffer,start2, data2.start, data2.end)
+        data2.buffer.copy(buffer,(start2 % client.chunkSize), data2.start, data2.end)
 
         cb( buffer, 0, buffer.length )
         client.logger.log "silly", "after downloading - #{data.buffer.length} - #{data.start} - #{data.end}"
