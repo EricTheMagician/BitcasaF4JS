@@ -126,6 +126,15 @@ class BitcasaClient
             else if not (data instanceof Buffer)
               client.logger.log("debug", "failed to download #{location} -- typeof data: #{typeof data} -- length #{data.length} -- invalid type -- content-type: #{response.headers["content-type"]} -- encoding #{response.headers["content-encoding"]} - path : #{path}")
               client.logger.log("debug", data)
+              if response.headers["content-type"] == "application/json; charset=UTF-8"
+                res = JSON.parse(data)
+                #if file not found,remove it from the tree.
+                #this can happen if another client has deleted
+                if res.error.code == 2003
+                  parentPath = client.bitcasaTree.get(pth.dirname(path))
+                  filePath = pth.join(parentPath,name)
+                  client.folderTree.delete(filePath)
+                  
             else if  data.length < (chunkStart - chunkEnd + 1)
               client.logger.log("debug", "failed to download #{location} -- #{data.length} - size mismatch")
             else
