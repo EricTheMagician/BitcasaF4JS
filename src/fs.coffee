@@ -18,7 +18,7 @@ Fiber = require 'fibers'
 logger = new (winston.Logger)({
     transports: [
       new (winston.transports.Console)({ level: 'info' }),
-      new (winston.transports.File)({ filename: '/tmp/somefile.log', level:'debug' })
+      new (winston.transports.File)({ filename: '/tmp/BitcasaF4JS.log', level:'debug' })
     ]
   })
 #bitcasa client
