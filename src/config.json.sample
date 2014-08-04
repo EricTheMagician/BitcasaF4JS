@@ -4,8 +4,8 @@
   "redirectUrl": "can be left blank",
   "accessToken": "",
   "mountPoint": "",
-  "chunkSize": 8388608,
+  "chunkSize": 33554432,
   "cacheLocation": "",
   "maxCache": 2048,
-  "advancedChunks": 10,
+  "advancedChunks": 4
 }
