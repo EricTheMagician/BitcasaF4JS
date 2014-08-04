@@ -22,6 +22,19 @@ NodeJS:
 8. node fs.js
 9. optional: node watch.js
 
+##Getting your access token
+Go here:
+https://developer.bitcasa.com/
+
+Sign in
+Then go to the console:
+https://developer.bitcasa.com/admin/applications
+
+Create an app (or use an existing one).
+
+Then follow these instructions for authentication:
+https://developer.bitcasa.com/docs
+
 
 ##Todo
 1. Implement file uploads: this will be implemented after the new upload server is functioning with pause/resume uploading
