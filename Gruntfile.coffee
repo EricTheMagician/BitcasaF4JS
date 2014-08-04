@@ -62,4 +62,4 @@ module.exports = (grunt) ->
   grunt.loadNpmTasks('grunt-contrib-copy');
 
   # Default task(s).
-  grunt.registerTask('default', ['copy', 'coffee', 'mochaTest']);
+  grunt.registerTask('default', ['copy', 'coffee']);
