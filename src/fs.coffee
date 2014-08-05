@@ -14,7 +14,11 @@ f4js = require 'fuse4js'
 winston = require 'winston'
 os = require 'os'
 Fiber = require 'fibers'
+dict = require 'dict'
+Future = require('fibers/future')
+wait = Future.wait
 fs = require 'fs-extra'
+pth = require 'path'
 
 logger = new (winston.Logger)({
     transports: [
@@ -27,12 +31,6 @@ client = new BitcasaClient(config.clientId, config.secret, config.redirectUrl, l
 #get folder attributes in the background
 client.getFolders "/"
 
-if config.nodeTimeAccount
-  require('nodetime').profile({
-    accountKey: config.nodeTimeAccount
-  })
-
-
 #http://lxr.free-electrons.com/source/include/uapi/asm-generic/errno-base.h#L23
 errnoMap =
     EPERM: 1,
@@ -42,7 +40,93 @@ errnoMap =
     EINVAL: 22,
     ENOTEMPTY: 39
 
+_getFolder = (path, depth, cb) ->
+  args =
+    path:
+      path: path
+      depth: depth
 
+  client.client.methods.getFolder args, (data, response) ->
+    cb(null, data)
+
+getFolder = Future.wrap(_getFolder)
+
+#this function will udpate all the folders content
+getAllFolders = ->
+  folders = [client.folderTree.get('/')]
+  folderTree = new dict()
+  client.folderTree.forEach (value, key) ->
+    if value instanceof BitcasaFolder
+      try
+        if value.bitcasaPath.match(/\//g).length % 3 == 2
+          folderTree.set key,  new BitcasaFolder(client, value.bitcasaPath, value.name, value.ctime, value.mtime, [])
+          folders.push value
+      catch error
+        console.log "there was an error listing folder #{key}: #{value} -- #{error}"
+  folderTree.set '/', new BitcasaFolder(client, '/', 'root', new Date(), new Date(),[])
+  Fiber( ->
+    fiber = Fiber.current
+    fiberRun = ->
+      fiber.run()
+    processing = []
+    start = new Date()
+
+    retry = 0
+    while folders.length > 0 and retry < 3 
+      retry++
+      while processing.length < folders.length
+        tokens = Math.min(Math.ceil(client.rateLimit.getTokensRemaining()/12), folders.length - processing.length)
+        for i in [0...tokens]
+          if not client.rateLimit.tryRemoveTokens(1)
+            setTimeout fiberRun, 1000
+            Fiber.yield()
+          depth = 3
+          if folders[0].bitcasaPath == '/'
+            depth = 1
+          processing.push getFolder(folders[i].bitcasaPath,depth)
+        if processing.length < folders.length
+          setTimeout fiberRun, 4500
+          Fiber.yield()
+      for i in [0...processing.length]
+        if not processing[i].isResolved()
+          processing[i].wait()
+
+        data = processing[i].get()
+        try
+          result = JSON.parse(data)
+        catch error
+          folders.push(folders[i])
+          client.logger.log "error", "there was a problem processing i=#{i}(#{folders[i].name}) - #{error} - folders length - #{folders.length}"
+
+          continue
+
+        if result.error
+          client.logger.log "error", "there was an error getting folder: #{result.error.code} - #{result.error.message}"
+          continue
+        for o in result.result.items
+          #get real path of parent
+          parent = client.bitcasaTree.get(pth.dirname(o.path))
+          realPath = pth.join(parent,o.name)
+
+          #add child to parent folder
+          parentFolder = folderTree.get parent
+          if o.name not in parentFolder.children
+            parentFolder.children.push o.name
+
+          if o.category == 'folders'
+            # keep track of the conversion of bitcasa path to real path
+            client.bitcasaTree.set o.path, realPath
+            folderTree.set( realPath, new BitcasaFolder(client, o.path, o.name, new Date(o.ctime), new Date(o.mtime), []) )
+          else
+            folderTree.set realPath,    new BitcasaFile(client, o.path, o.name,o.size,  new Date(o.ctime), new Date(o.mtime))
+      folders.splice 0, processing.length
+    client.logger.log "debug", "it took #{Math.ceil( ((new Date())-start)/60000)} minutes to update folders"
+    client.folderTree = folderTree
+    setTimeout getAllFolders, 900000
+    return null
+
+  ).run()
+getAllFolders()
 getattr = (path, cb) ->
   logger.log('silly', "getattr #{path}")
   if client.folderTree.has(path)

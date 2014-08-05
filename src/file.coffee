@@ -2,7 +2,7 @@ pth = require 'path'
 Future = require('fibers/future')
 Fiber = require 'fibers'
 wait = Future.wait
-fs = require 'fs'
+fs = require 'fs-extra'
 class BitcasaFile
   @fileAttr: 0o100777 #according to filesystem information, the 15th bit is set and the read and write are available for everyone
   constructor: (@client,@bitcasaPath, @name, @size, @ctime, @mtime) ->

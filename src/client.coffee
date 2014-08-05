@@ -55,7 +55,7 @@ class BitcasaClient
     @client = new Client
     @client.registerMethod 'getRootFolder', "#{BASEURL}folders/?access_token=#{@accessToken}", "GET"
     @client.registerMethod 'downloadChunk', "#{BASEURL}files/name.ext?path=${path}&access_token=#{@accessToken}", "GET"
-    @client.registerMethod 'getFolder', url = "#{BASEURL}/folders${path}?access_token=#{@accessToken}", "GET"
+    @client.registerMethod 'getFolder', url = "#{BASEURL}/folders${path}?access_token=#{@accessToken}&depth=${depth}", "GET"
 
     @client.on 'error', (err) ->
       console.log('There was an error connecting with bitcasa:', err)
