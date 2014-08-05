@@ -8,6 +8,7 @@ Fiber = require 'fibers'
 wait = Future.wait
 
 location = config.cacheLocation
+downloadLocation = pth.join(config.cacheLocation, "download")
 maxCache = config.maxCacheSize  * 1024 * 1024
 
 logger = new (winston.Logger)({
@@ -54,7 +55,10 @@ watcher = fs.watch location, (event, filename) ->
         totalSize = sizes.reduce (x,y) -> x + y
         if totalSize > maxCache
           all = zip(files,stats)
+          all.filter (element)->
+
           all.sort(sortStats)
+
 
           for info in all
             if totalSize < maxCache

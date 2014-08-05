@@ -46,10 +46,10 @@ class BitcasaClient
     if @accessToken != null
       @setRest()
 
-    client = @;
-    fs.exists @cacheLocation, (exists) ->
-      if !exists
-        fs.mkdirpSync(client.cacheLocation)
+    @downloadLocation = pth.join @cacheLocation, "download"
+    @uploadLocation = pth.join @cacheLocation, "upload"
+    fs.ensureDirSync(@downloadLocation)
+    fs.ensureDirSync(@uploadLocation)
 
   setRest: ->
     @client = new Client
@@ -86,7 +86,7 @@ class BitcasaClient
       #save location
       # console.log client.cacheLocation
       # console.log "#{baseName}-#{chunkStart}-#{chunkEnd}"
-      location = pth.join(client.cacheLocation,"#{baseName}-#{chunkStart}-#{chunkEnd}")
+      location = pth.join(client.downloadLocation,"#{baseName}-#{chunkStart}-#{chunkEnd}")
       client.logger.log('silly',"cache location: #{location}")
 
 
