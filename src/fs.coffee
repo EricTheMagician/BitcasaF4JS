@@ -14,6 +14,7 @@ f4js = require 'fuse4js'
 winston = require 'winston'
 os = require 'os'
 Fiber = require 'fibers'
+fs = require 'fs-extra'
 
 logger = new (winston.Logger)({
     transports: [
@@ -181,7 +182,7 @@ try
     when 'Linux' then  ["-o", "allow_other"]
     when 'Darwin' then  ["-o", "allow_other", "-o", "noappledouble", "-o", "daemon_timeout=0"]
     else []
-  fs.ensureDirSync(mountPoint)
+  fs.ensureDirSync(config.mountPoint)
   f4js.start(config.mountPoint, handlers, false, opts);
   logger.log('info', "mount point: #{config.mountPoint}")
 catch e
