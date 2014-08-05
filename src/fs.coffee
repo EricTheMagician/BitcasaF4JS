@@ -181,6 +181,7 @@ try
     when 'Linux' then  ["-o", "allow_other"]
     when 'Darwin' then  ["-o", "allow_other", "-o", "noappledouble", "-o", "daemon_timeout=0"]
     else []
+  fs.ensureDirSync(mountPoint)
   f4js.start(config.mountPoint, handlers, false, opts);
   logger.log('info', "mount point: #{config.mountPoint}")
 catch e

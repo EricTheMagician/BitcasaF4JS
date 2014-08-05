@@ -3,7 +3,7 @@ RateLimiter = require('limiter').RateLimiter
 Client = require('node-rest-client').Client;
 dict = require 'dict'
 pth = require 'path'
-fs = require 'fs'
+fs = require 'fs-extra'
 memoize = require 'memoizee'
 d = require('d');
 Future = require('fibers/future')
@@ -49,7 +49,7 @@ class BitcasaClient
     client = @;
     fs.exists @cacheLocation, (exists) ->
       if !exists
-        fs.mkdirSync(client.cacheLocation)
+        fs.mkdirpSync(client.cacheLocation)
 
   setRest: ->
     @client = new Client
@@ -134,7 +134,7 @@ class BitcasaClient
                   parentPath = client.bitcasaTree.get(pth.dirname(path))
                   filePath = pth.join(parentPath,name)
                   client.folderTree.delete(filePath)
-                  
+
             else if  data.length < (chunkStart - chunkEnd + 1)
               client.logger.log("debug", "failed to download #{location} -- #{data.length} - size mismatch")
             else
