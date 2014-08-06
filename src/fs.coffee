@@ -92,7 +92,10 @@ getAllFolders = ->
           Fiber.yield()
       for i in [0...processing.length]
         if not processing[i].isResolved()
-          processing[i].wait()
+          try #catch socket connection error
+            processing[i].wait()
+          catch error
+            client.logger.log("error", "there was a problem processing i=#{i}(#{folders[i].name}) - #{error}")
 
         data = processing[i].get()
         try
