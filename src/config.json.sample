@@ -1,11 +1,13 @@
 {
-  "clientId": "",
-  "secret": "",
-  "redirectUrl": "can be left blank",
   "accessToken": "",
   "mountPoint": "",
-  "chunkSize": 33554432,
   "cacheLocation": "",
+  "chunkSize": 33554432,
+  "advancedChunks": 4,
   "maxCache": 2048,
-  "advancedChunks": 4
+
+  "clientId": "",
+  "secret": "",
+  "redirectUrl": "localhost:7331"
+
 }
