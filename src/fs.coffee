@@ -46,9 +46,12 @@ _getFolder = (path, depth, cb) ->
       path: path
       depth: depth
 
-  client.client.methods.getFolder args, (data, response) ->
+  req = client.client.methods.getFolder args, (data, response) ->
     cb(null, data)
 
+  req.on 'error', (err) ->
+    cb(err)
+    
 getFolder = Future.wrap(_getFolder)
 
 #this function will udpate all the folders content
@@ -72,7 +75,7 @@ getAllFolders = ->
     start = new Date()
 
     retry = 0
-    while folders.length > 0 and retry < 3 
+    while folders.length > 0 and retry < 3
       retry++
       while processing.length < folders.length
         tokens = Math.min(Math.ceil(client.rateLimit.getTokensRemaining()/12), folders.length - processing.length)
