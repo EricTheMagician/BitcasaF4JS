@@ -51,7 +51,7 @@ _getFolder = (path, depth, cb) ->
 
   req.on 'error', (err) ->
     cb(err)
-    
+
 getFolder = Future.wrap(_getFolder)
 
 #this function will udpate all the folders content
@@ -61,7 +61,7 @@ getAllFolders = ->
   client.folderTree.forEach (value, key) ->
     if value instanceof BitcasaFolder
       try
-        if value.bitcasaPath.match(/\//g).length % 3 == 2
+        if value.bitcasaPath.match(/\//g).length == 2
           folderTree.set key,  new BitcasaFolder(client, value.bitcasaPath, value.name, value.ctime, value.mtime, [])
           folders.push value
       catch error
