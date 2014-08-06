@@ -45,6 +45,7 @@ _getFolder = (path, depth, cb) ->
     path:
       path: path
       depth: depth
+    timeout: 90000
 
   req = client.client.methods.getFolder args, (data, response) ->
     cb(null, data)
