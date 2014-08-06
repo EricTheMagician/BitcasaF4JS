@@ -129,11 +129,12 @@ getAllFolders = ->
       folders.splice 0, processing.length
     client.logger.log "debug", "it took #{Math.ceil( ((new Date())-start)/60000)} minutes to update folders"
     client.folderTree = folderTree
-    setTimeout getAllFolders, 900000
     return null
 
   ).run()
 getAllFolders()
+setInterval getAllFolders, 900000
+
 getattr = (path, cb) ->
   logger.log('silly', "getattr #{path}")
   if client.folderTree.has(path)
