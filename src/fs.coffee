@@ -84,7 +84,7 @@ getAllFolders = ->
             setTimeout fiberRun, 1000
             Fiber.yield()
           depth = 3
-          if folders[0].bitcasaPath == '/'
+          if folders[i].bitcasaPath == '/'
             depth = 1
           processing.push getFolder(folders[i].bitcasaPath,depth)
         if processing.length < folders.length
