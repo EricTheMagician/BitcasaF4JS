@@ -88,6 +88,8 @@ getAllFolders = ->
       retry++
       processing = []
       while processing.length < folders.length
+        client.logger.log  "silly", "folders length = #{folders.length}, processing length: #{processing.length}"
+
         tokens = Math.min(Math.ceil(client.rateLimit.getTokensRemaining()/12), folders.length - processing.length)
         for i in [0...tokens]
           if not client.rateLimit.tryRemoveTokens(1)
@@ -103,10 +105,12 @@ getAllFolders = ->
       for i in [0...processing.length]
         if not processing[i].isResolved()
           try #catch socket connection error
+            client.logger.log "silly", "waiting for process[#{i}]. folder name is: #{folders[i].name}"
             processing[i].wait()
             data = processing[i].get()
           catch error
             client.logger.log("error", "there was a problem processing i=#{i}(#{folders[i].name}) - #{error}")
+            folders.push(folders[i])
             continue
 
         try
@@ -183,7 +187,7 @@ read = (path, offset, len, buf, fh, cb) ->
         client.logger.log "silly", "logging from read callback #{dataEnd-dataStart} -- #{  client.downloadTree.has(p)}"
         return cb(dataEnd-dataStart);
       catch error
-        console.log("failed reading:", error)
+        client.logger.log( "error", "failed reading:", error)
     file = client.folderTree.get(path)
     file.download(offset, offset+len-1,callback)
 
@@ -280,7 +284,7 @@ handlers =
   destroy: destroy
 
 try
-  console.log 'attempting to start f4js'
+  client.logger.log "info", 'attempting to start f4js'
   opts = switch os.type()
     when 'Linux' then  ["-o", "allow_other"]
     when 'Darwin' then  ["-o", "allow_other", "-o", "noappledouble", "-o", "daemon_timeout=0"]
@@ -289,4 +293,4 @@ try
   f4js.start(config.mountPoint, handlers, false, opts);
   logger.log('info', "mount point: #{config.mountPoint}")
 catch e
-  console.log("Exception when starting file system: #{e}")
+  client.logger.log( "error", "Exception when starting file system: #{e}")
