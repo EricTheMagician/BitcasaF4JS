@@ -71,12 +71,12 @@ getAllFolders = ->
     fiber = Fiber.current
     fiberRun = ->
       fiber.run()
-    processing = []
     start = new Date()
 
     retry = 0
-    while folders.length > 0 and retry < 3
+    while folders.length > 0 and retry < 5
       retry++
+      processing = []
       while processing.length < folders.length
         tokens = Math.min(Math.ceil(client.rateLimit.getTokensRemaining()/12), folders.length - processing.length)
         for i in [0...tokens]
@@ -100,7 +100,6 @@ getAllFolders = ->
         catch error
           folders.push(folders[i])
           client.logger.log "error", "there was a problem processing i=#{i}(#{folders[i].name}) - #{error} - folders length - #{folders.length}"
-
           continue
 
         if result.error
