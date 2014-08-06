@@ -65,8 +65,8 @@ getAllFolders = ->
           folderTree.set key,  new BitcasaFolder(client, value.bitcasaPath, value.name, value.ctime, value.mtime, [])
           folders.push value
       catch error
-        console.log "there was an error listing folder #{key}: #{value} -- #{error}"
-  folderTree.set '/', new BitcasaFolder(client, '/', 'root', new Date(), new Date(),[])
+        client.logger.log "error", "there was an error listing folder #{key}: #{value} -- #{error}"
+  folderTree.set '/', new BitcasaFolder(client, '/', 'root', (new Date()).getTime(), (new Date()).getTime(),[])
   Fiber( ->
     fiber = Fiber.current
     fiberRun = ->
@@ -94,10 +94,11 @@ getAllFolders = ->
         if not processing[i].isResolved()
           try #catch socket connection error
             processing[i].wait()
+            data = processing[i].get()
           catch error
             client.logger.log("error", "there was a problem processing i=#{i}(#{folders[i].name}) - #{error}")
+            continue
 
-        data = processing[i].get()
         try
           result = JSON.parse(data)
         catch error
