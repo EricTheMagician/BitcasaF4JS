@@ -45,13 +45,22 @@ _getFolder = (path, depth, cb) ->
     path:
       path: path
       depth: depth
-    timeout: 90000
-
+  returned = false
   req = client.client.methods.getFolder args, (data, response) ->
-    cb(null, data)
+    if not returned
+      returned = true
+      cb(null, data)
 
   req.on 'error', (err) ->
-    cb(err)
+    if not returned
+      returned = true
+      cb(err)
+  callback = ->
+    if not returned
+      returned = true
+      cb("taking too long to receive a folder")
+
+  setTimeout callback, 180000
 
 getFolder = Future.wrap(_getFolder)
 
@@ -127,13 +136,15 @@ getAllFolders = ->
           else
             folderTree.set realPath,    new BitcasaFile(client, o.path, o.name,o.size,  new Date(o.ctime), new Date(o.mtime))
       folders.splice 0, processing.length
+      client.logger.log "debug", "folders length after splicing: #{folders.length}"
     client.logger.log "debug", "it took #{Math.ceil( ((new Date())-start)/60000)} minutes to update folders"
     client.folderTree = folderTree
+    setTimeout getAllFolders, 900000
+
     return null
 
   ).run()
 getAllFolders()
-setInterval getAllFolders, 900000
 
 getattr = (path, cb) ->
   logger.log('silly', "getattr #{path}")
