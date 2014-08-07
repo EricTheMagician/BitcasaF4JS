@@ -57,12 +57,51 @@ _getFolder = (path, depth, cb) ->
       cb(err)
 
 getFolder = Future.wrap(_getFolder)
+loadFolderTree = ->
+  jsonFile =  "#{client.cacheLocation}/data/folderTree.json"
+  if fs.existsSync(jsonFile)
+    fs.readJson jsonFile, (err, data) ->
+      for key in Object.keys(data)
+        o = data[key]
+
+        #get real path of parent
+        parent = client.bitcasaTree.get(pth.dirname(o.path))
+        realPath = pth.join(parent,o.name)
+
+        #add child to parent folder
+        parentFolder = client.folderTree.get parent
+
+        if o.name not in parentFolder.children
+          parentFolder.children.push o.name
+
+        if o.size
+          client.folderTree.set key, new BitcasaFile(client, o.path, o.name, o.size, new Date(o.ctime), new Date(o.mtime) )
+        else
+          # keep track of the conversion of bitcasa path to real path
+          client.bitcasaTree.set o.path, realPath
+          client.folderTree.set key, new BitcasaFolder(client, o.path, o.name, o.ctime, o.mtime, [])
+      getAllFolders()
+  else
+    getAllFolders()
+
+saveFolderTree = ->
+  toSave = {}
+  client.folderTree.forEach (value, key) ->
+    toSave[key] =
+      name: value.name
+      mtime: value.mtime.getTime()
+      ctime: value.ctime.getTime()
+      path: value.bitcasaPath
+
+    if value instanceof BitcasaFile
+      toSave[key].size = value.size
+  fs.outputJson "#{client.cacheLocation}/data/folderTree.json", toSave, ->
+    setTimeout getAllFolders, 30000
 
 #this function will udpate all the folders content
 getAllFolders = ->
   folders = [] #folders to scan
   parseLater = [] #sometimes, certain scans will fail, because the parent failed. add these later
-  folderTree = new dict()
 
   # get folders that should be
   client.folderTree.forEach (value, key) ->
@@ -75,7 +114,7 @@ getAllFolders = ->
           folders.pop()
       catch error
         client.logger.log "error", "there was an error listing folder #{key}: #{value} -- #{error}"
-  folderTree.set '/', new BitcasaFolder(client, '/', '', (new Date()), (new Date()),[])
+  client.folderTree.set '/', new BitcasaFolder(client, '/', '', (new Date()), (new Date()),[])
   Fiber( ->
     fiber = Fiber.current
     fiberRun = ->
@@ -136,7 +175,7 @@ getAllFolders = ->
           realPath = pth.join(parent,o.name)
 
           #add child to parent folder
-          parentFolder = folderTree.get parent
+          parentFolder = client.folderTree.get parent
 
           #if parent is undefined, parse later. sometimes, parent errored out while scanning.
           if parentFolder == undefined
@@ -161,11 +200,13 @@ getAllFolders = ->
     client.logger.log "debug", "it took #{Math.ceil( ((new Date())-start)/60000)} minutes to update folders"
     BitcasaFolder.parseItems client, parseLater
     setTimeout getAllFolders, 30000
-
+    saveFolderTree()
     return null
 
   ).run()
-getAllFolders()
+
+loadFolderTree()
+
 
 getattr = (path, cb) ->
   logger.log('silly', "getattr #{path}")

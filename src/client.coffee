@@ -38,7 +38,7 @@ existsMemoized = memoize(fs.existsSync, {maxAge:5000})
 class BitcasaClient
   constructor: (@id, @secret, @redirectUrl, @logger, @accessToken = null, @chunkSize = 1024*1024, @advancedChunks = 10, @cacheLocation = '/tmp/node-bitcasa') ->
     @rateLimit = new RateLimiter 175, 'minute'
-    now = (new Date).getTime()
+    now = (new Date)
     root = new BitcasaFolder(@,'/', '', now, now, [])
     @folderTree = new dict({'/': root})
     @bitcasaTree = new dict({'/': '/'})
