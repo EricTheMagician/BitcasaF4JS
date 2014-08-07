@@ -79,7 +79,7 @@ loadFolderTree = ->
         else
           # keep track of the conversion of bitcasa path to real path
           client.bitcasaTree.set o.path, realPath
-          client.folderTree.set key, new BitcasaFolder(client, o.path, o.name, o.ctime, o.mtime, [])
+          client.folderTree.set key, new BitcasaFolder(client, o.path, o.name, new Date(o.ctime), new Date( o.mtime), [])
       getAllFolders()
   else
     getAllFolders()
