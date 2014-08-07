@@ -39,7 +39,7 @@ class BitcasaClient
   constructor: (@id, @secret, @redirectUrl, @logger, @accessToken = null, @chunkSize = 1024*1024, @advancedChunks = 10, @cacheLocation = '/tmp/node-bitcasa') ->
     @rateLimit = new RateLimiter 175, 'minute'
     now = (new Date).getTime()
-    root = new BitcasaFolder(@,'/', 'root', now, now, [])
+    root = new BitcasaFolder(@,'/', '', now, now, [])
     @folderTree = new dict({'/': root})
     @bitcasaTree = new dict({'/': '/'})
     @downloadTree = new dict()
@@ -55,7 +55,7 @@ class BitcasaClient
     @client = new Client
     @client.registerMethod 'getRootFolder', "#{BASEURL}folders/?access_token=#{@accessToken}", "GET"
     @client.registerMethod 'downloadChunk', "#{BASEURL}files/name.ext?path=${path}&access_token=#{@accessToken}", "GET"
-    @client.registerMethod 'getFolder', url = "#{BASEURL}/folders${path}?access_token=#{@accessToken}&depth=${depth}", "GET"
+    @client.registerMethod 'getFolder', "#{BASEURL}/folders${path}?access_token=#{@accessToken}&depth=${depth}", "GET"
 
     @client.on 'error', (err) ->
       console.log('There was an error connecting with bitcasa:', err)

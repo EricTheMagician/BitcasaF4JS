@@ -55,95 +55,112 @@ _getFolder = (path, depth, cb) ->
     if not returned
       returned = true
       cb(err)
-  callback = ->
-    if not returned
-      returned = true
-      cb("taking too long to receive a folder")
-
-  setTimeout callback, 180000
 
 getFolder = Future.wrap(_getFolder)
 
 #this function will udpate all the folders content
 getAllFolders = ->
-  folders = [client.folderTree.get('/')]
+  folders = [] #folders to scan
+  parseLater = [] #sometimes, certain scans will fail, because the parent failed. add these later
   folderTree = new dict()
+
+  # get folders that should be
   client.folderTree.forEach (value, key) ->
     if value instanceof BitcasaFolder
       try
-        if value.bitcasaPath.match(/\//g).length == 2
-          folderTree.set key,  new BitcasaFolder(client, value.bitcasaPath, value.name, value.ctime, value.mtime, [])
+        length = value.bitcasaPath.match(/\//g).length
+        if length  % 2 == 1
           folders.push value
+        if length == 1 and value.name != '' #if not root, but "/Bitcasa Infinite Drive" for example
+          folders.pop()
       catch error
         client.logger.log "error", "there was an error listing folder #{key}: #{value} -- #{error}"
-  folderTree.set '/', new BitcasaFolder(client, '/', 'root', (new Date()).getTime(), (new Date()).getTime(),[])
+  folderTree.set '/', new BitcasaFolder(client, '/', '', (new Date()), (new Date()),[])
   Fiber( ->
     fiber = Fiber.current
     fiberRun = ->
       fiber.run()
     start = new Date()
 
-    retry = 0
-    while folders.length > 0 and retry < 5
-      retry++
+    while folders.length > 0
       processing = []
-      while processing.length < folders.length
-        client.logger.log  "silly", "folders length = #{folders.length}, processing length: #{processing.length}"
-
-        tokens = Math.min(Math.ceil(client.rateLimit.getTokensRemaining()/12), folders.length - processing.length)
-        for i in [0...tokens]
-          if not client.rateLimit.tryRemoveTokens(1)
-            setTimeout fiberRun, 1000
-            Fiber.yield()
-          depth = 3
-          if folders[i].bitcasaPath == '/'
-            depth = 1
-          processing.push getFolder(folders[i].bitcasaPath,depth)
-        if processing.length < folders.length
-          setTimeout fiberRun, 4500
+      client.logger.log  "silly", "folders length = #{folders.length}, processing length: #{processing.length}"
+      tokens = Math.min(Math.floor(client.rateLimit.getTokensRemaining()/6), folders.length - processing.length)
+      for i in [0...tokens]
+        if not client.rateLimit.tryRemoveTokens(1)
+          setTimeout fiberRun, 1000
           Fiber.yield()
+        depth = 2
+        processing.push getFolder(folders[i].bitcasaPath,depth )
+      wait(processing)
       for i in [0...processing.length]
-        if not processing[i].isResolved()
+        client.logger.log "silly", "proccessing[#{i}] out of #{processing.length}"
+        if processing[i].isResolved()
+          data = processing[i].get()
+        else
+          client.logger.log "silly", "waiting for process[#{i}]. folder name is: #{folders[i].name}"
           try #catch socket connection error
-            client.logger.log "silly", "waiting for process[#{i}]. folder name is: #{folders[i].name}"
-            processing[i].wait()
-            data = processing[i].get()
+            data = processing[i].wait()
           catch error
-            client.logger.log("error", "there was a problem processing i=#{i}(#{folders[i].name}) - #{error}")
+            client.logger.log("error", "there was a problem with connection for folder #{folders[i].name} - #{error}")
             folders.push(folders[i])
             continue
+
 
         try
           result = JSON.parse(data)
         catch error
           folders.push(folders[i])
-          client.logger.log "error", "there was a problem processing i=#{i}(#{folders[i].name}) - #{error} - folders length - #{folders.length}"
+          client.logger.log "error", "there was a problem processing i=#{i}(#{folders[i].name}) - #{error} - folders length - #{folders.length} - data"
+          client.logger.log "debug", "the bad data was: #{data}"
           continue
 
         if result.error
-          client.logger.log "error", "there was an error getting folder: #{result.error.code} - #{result.error.message}"
+          if result.error.code == 2002 #folder does not exist
+            parent = client.bitcasaTree.get(pth.dirname(o.path))
+            realPath = pth.join(parent,folders[i].name)
+            client.folderTree.delete(realPath)
+          else
+            client.logger.log "error", "there was an error getting folder: #{result.error.code} - #{result.error.message}"
           continue
+
         for o in result.result.items
           #get real path of parent
           parent = client.bitcasaTree.get(pth.dirname(o.path))
+
+          #if the parent does not exist yet, parse later
+          if parent == undefined
+            parseLater.push o
+            continue
+
           realPath = pth.join(parent,o.name)
 
           #add child to parent folder
           parentFolder = folderTree.get parent
+
+          #if parent is undefined, parse later. sometimes, parent errored out while scanning.
+          if parentFolder == undefined
+            parseLater.push o
+            continue
+
           if o.name not in parentFolder.children
             parentFolder.children.push o.name
 
           if o.category == 'folders'
             # keep track of the conversion of bitcasa path to real path
             client.bitcasaTree.set o.path, realPath
-            folderTree.set( realPath, new BitcasaFolder(client, o.path, o.name, new Date(o.ctime), new Date(o.mtime), []) )
+            existingFolder = client.folderTree.get(realPath)
+            children = []
+            if existingFolder != undefined
+              children = existingFolder.children
+            client.folderTree.set( realPath, new BitcasaFolder(client, o.path, o.name, new Date(o.ctime), new Date(o.mtime), children) )
           else
-            folderTree.set realPath,    new BitcasaFile(client, o.path, o.name,o.size,  new Date(o.ctime), new Date(o.mtime))
+            client.folderTree.set realPath,    new BitcasaFile(client, o.path, o.name,o.size,  new Date(o.ctime), new Date(o.mtime))
       folders.splice 0, processing.length
       client.logger.log "debug", "folders length after splicing: #{folders.length}"
     client.logger.log "debug", "it took #{Math.ceil( ((new Date())-start)/60000)} minutes to update folders"
-    client.folderTree = folderTree
-    setTimeout getAllFolders, 900000
+    BitcasaFolder.parseItems client, parseLater
+    setTimeout getAllFolders, 30000
 
     return null
 
