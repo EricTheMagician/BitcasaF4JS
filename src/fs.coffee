@@ -134,16 +134,12 @@ getAllFolders = ->
       wait(processing)
       for i in [0...processing.length]
         client.logger.log "silly", "proccessing[#{i}] out of #{processing.length}"
-        if processing[i].isResolved()
-          data = processing[i].get()
-        else
-          client.logger.log "silly", "waiting for process[#{i}]. folder name is: #{folders[i].name}"
-          try #catch socket connection error
-            data = processing[i].wait()
-          catch error
-            client.logger.log("error", "there was a problem with connection for folder #{folders[i].name} - #{error}")
-            folders.push(folders[i])
-            continue
+        try #catch socket connection error
+          data = processing[i].wait()
+        catch error
+          client.logger.log("error", "there was a problem with connection for folder #{folders[i].name} - #{error}")
+          folders.push(folders[i])
+          continue
 
 
         try
