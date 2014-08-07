@@ -134,12 +134,16 @@ getAllFolders = ->
       wait(processing)
       for i in [0...processing.length]
         client.logger.log "silly", "proccessing[#{i}] out of #{processing.length}"
+        processingError = false
         try #catch socket connection error
           data = processing[i].wait()
         catch error
           client.logger.log("error", "there was a problem with connection for folder #{folders[i].name} - #{error}")
+          processingError = true
           folders.push(folders[i])
-          continue
+        finally
+          if processingError
+            continue
 
 
         try
@@ -148,7 +152,11 @@ getAllFolders = ->
           folders.push(folders[i])
           client.logger.log "error", "there was a problem processing i=#{i}(#{folders[i].name}) - #{error} - folders length - #{folders.length} - data"
           client.logger.log "debug", "the bad data was: #{data}"
-          continue
+          processingError = true
+        finally
+          if processingError
+            continue
+
 
         if result.error
           if result.error.code == 2002 #folder does not exist
