@@ -29,7 +29,6 @@ logger = new (winston.Logger)({
 #bitcasa client
 client = new BitcasaClient(config.clientId, config.secret, config.redirectUrl, logger, config.accessToken, config.chunkSize, config.advancedChunks, config.cacheLocation)
 #get folder attributes in the background
-client.getFolders "/"
 
 #http://lxr.free-electrons.com/source/include/uapi/asm-generic/errno-base.h#L23
 errnoMap =
@@ -114,7 +113,6 @@ getAllFolders = ->
           folders.pop()
       catch error
         client.logger.log "error", "there was an error listing folder #{key}: #{value} -- #{error}"
-  client.folderTree.set '/', new BitcasaFolder(client, '/', '', (new Date()), (new Date()),[])
   Fiber( ->
     fiber = Fiber.current
     fiberRun = ->
