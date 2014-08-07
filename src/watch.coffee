@@ -54,8 +54,8 @@ watcher = fs.watch location, (event, filename) ->
         sizes = (stat.size for stat in stats)
         totalSize = sizes.reduce (x,y) -> x + y
         if totalSize > maxCache
+          files = readdir(downloadLocation).wait()
           all = zip(files,stats)
-          all.filter (element)->
 
           all.sort(sortStats)
 
