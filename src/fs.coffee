@@ -46,22 +46,26 @@ _getFolder = (path, depth, cb) ->
       depth: depth
       timeout: 120000
   returned = false
-  req = client.client.methods.getFolder args, (data, response) ->
-    if not returned
-      returned = true
-      cb(null, data)
-
-  req.on 'error', (err) ->
-    if not returned
-      returned = true
-      cb(err)
 
   #if not done after 5 minutes, we have a problem
   callback = ->
     if not returned
       returned = true
       cb("taking to long to getFolder")
-  setTimeout callback, 300000
+  timeout = setTimeout callback, 300000
+
+  req = client.client.methods.getFolder args, (data, response) ->
+    if not returned
+      returned = true
+      clearTimeout timeout
+      cb(null, data)
+
+  req.on 'error', (err) ->
+    if not returned
+      returned = true
+      clearTimeout timeout
+      cb(err)
+
 
 getFolder = Future.wrap(_getFolder)
 loadFolderTree = ->
