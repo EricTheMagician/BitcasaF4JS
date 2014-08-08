@@ -157,12 +157,17 @@ getAllFolders = ->
 
 
         if result.error
-          if result.error.code == 2002 #folder does not exist
-            parent = client.bitcasaTree.get(pth.dirname(o.path))
-            realPath = pth.join(parent,folders[i].name)
-            client.folderTree.delete(realPath)
-          else
-            client.logger.log "error", "there was an error getting folder: #{result.error.code} - #{result.error.message}"
+
+          switch result.error.code
+            when 2002 #folder does not exist
+              parent = client.bitcasaTree.get(pth.dirname(o.path))
+              realPath = pth.join(parent,folders[i].name)
+              client.folderTree.delete(realPath)
+            when 9006
+              client.logger.log "debug", "api rate limit reached while getting folders"
+              break
+            else
+              client.logger.log "error", "there was an error getting folder: #{result.error.code} - #{result.error.message}"
           continue
 
         for o in result.result.items
