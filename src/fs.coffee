@@ -165,6 +165,11 @@ getAllFolders = ->
               client.folderTree.delete(realPath)
             when 9006
               client.logger.log "debug", "api rate limit reached while getting folders"
+              setTimeout fiberRun, 61000
+              Fiber.yield()
+              for j in [i...processing.length]
+                folders.push(folders[j])
+                
               break
             else
               client.logger.log "error", "there was an error getting folder: #{result.error.code} - #{result.error.message}"
