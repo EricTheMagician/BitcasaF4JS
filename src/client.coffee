@@ -119,7 +119,7 @@ class BitcasaClient
           client.logger.log "debug", "starting to download #{location}"
           _download = (_cb) ->
             req = client.client.methods.downloadChunk args, (data, response)->
-              res = {data:data, response: reponse}
+              res = {data:data, response: response}
               _cb(null, res)
 
             req.on 'error', (err) ->
