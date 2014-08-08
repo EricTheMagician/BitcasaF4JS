@@ -157,7 +157,7 @@ getAllFolders = ->
 
 
         if result.error
-
+          breakLoop = false
           switch result.error.code
             when 2002 #folder does not exist
               parent = client.bitcasaTree.get(pth.dirname(o.path))
@@ -169,10 +169,12 @@ getAllFolders = ->
               Fiber.yield()
               for j in [i...processing.length]
                 folders.push(folders[j])
-                
-              break
+              breakLoop = true
             else
               client.logger.log "error", "there was an error getting folder: #{result.error.code} - #{result.error.message}"
+
+          if breakLoop
+            break
           continue
 
         for o in result.result.items
