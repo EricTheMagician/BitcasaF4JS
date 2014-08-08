@@ -132,6 +132,7 @@ class BitcasaClient
             cb(error)
 
           data = res.data
+          response = res.response
 
           failed = true #assume that the download failed
           client.logger.log("debug", "downloaded: #{location} - #{chunkEnd-chunkStart} -- limit #{client.rateLimit.getTokensRemaining()}")
