@@ -213,7 +213,6 @@ getAllFolders = ->
       client.logger.log "debug", "folders length after splicing: #{folders.length}"
     client.logger.log "debug", "it took #{Math.ceil( ((new Date())-start)/60000)} minutes to update folders"
     BitcasaFolder.parseItems client, parseLater
-    setTimeout getAllFolders, 30000
     saveFolderTree()
     return null
 
