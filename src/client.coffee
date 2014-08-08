@@ -125,7 +125,7 @@ class BitcasaClient
             req.on 'error', (err) ->
               client.logger.log("error","there was an error downloading: #{err}")
               _cb(err)
-          download = Future.wrap(download)
+          download = Future.wrap(_download)
           try
             res = download().wait()
           catch error
