@@ -84,8 +84,6 @@ class BitcasaClient
     Fiber( ->
       baseName = pth.basename path
       #save location
-      # console.log client.cacheLocation
-      # console.log "#{baseName}-#{chunkStart}-#{chunkEnd}"
       location = pth.join(client.downloadLocation,"#{baseName}-#{chunkStart}-#{chunkEnd}")
       client.logger.log('silly',"cache location: #{location}")
 
@@ -118,69 +116,78 @@ class BitcasaClient
               "path": path
             headers:
               Range: "bytes=#{chunkStart}-#{chunkEnd}"
-          callback = (data,response) ->
-            failed = true #assume that the download failed
-            client.logger.log("debug", "downloaded: #{location} - #{chunkEnd-chunkStart} -- limit #{client.rateLimit.getTokensRemaining()}")
-            if data.length == 14 and data.toString() == "invalid range"
-              client.logger.log("debug", "failed to download #{location} -- invalid range, path: #{path}")
-            else if not (data instanceof Buffer)
-              client.logger.log("debug", "failed to download #{location} -- typeof data: #{typeof data} -- length #{data.length} -- invalid type -- content-type: #{response.headers["content-type"]} -- encoding #{response.headers["content-encoding"]} - path : #{path}")
-              client.logger.log("debug", data)
-              if response.headers["content-type"] == "application/json; charset=UTF-8"
-                res = JSON.parse(data)
-                #if file not found,remove it from the tree.
-                #this can happen if another client has deleted
-                if res.error.code == 2003
-                  parentPath = client.bitcasaTree.get(pth.dirname(path))
-                  filePath = pth.join(parentPath,name)
-                  client.folderTree.delete(filePath)
-
-            else if  data.length < (chunkStart - chunkEnd + 1)
-              client.logger.log("debug", "failed to download #{location} -- #{data.length} - size mismatch")
-            else
-              client.logger.log("debug", "successfully downloaded #{location}")
-              writeFile(location,data)
-              failed = false
-
-            if recurse and failed  #let the fs decide what to do.
-              args =
-                buffer: new Buffer(0),
-                start: 0,
-                end : 0
-              cb(null,args)
-
-            else if (failed) and (not recurse)
-              client.downloadTree.delete("#{baseName}-#{chunkStart}")
-              cb(null, null)
-            else if not failed
-              args =
-                buffer: data,
-                start: start - chunkStart,
-                end : end+1-chunkStart
-              client.downloadTree.delete("#{baseName}-#{chunkStart}")
-              cb(null, args )
-            return failed
-
-
           client.logger.log "debug", "starting to download #{location}"
-          req = client.client.methods.downloadChunk args,callback
-          req.on 'error', (err) ->
-            client.logger.log("error","there was an error downloading: #{err}")
+          _download = (_cb) ->
+            req = client.client.methods.downloadChunk args, (data, response)->
+              res = {data:data, response: reponse}
+              _cb(null, res)
+
+            req.on 'error', (err) ->
+              client.logger.log("error","there was an error downloading: #{err}")
+              _cb(err)
+          download = Future.wrap(download)
+          try
+            res = download().wait()
+          catch error
+            cb(error)
+
+          data = res.data
+
+          failed = true #assume that the download failed
+          client.logger.log("debug", "downloaded: #{location} - #{chunkEnd-chunkStart} -- limit #{client.rateLimit.getTokensRemaining()}")
+          if data.length == 14 and data.toString() == "invalid range"
+            client.logger.log("debug", "failed to download #{location} -- invalid range, path: #{path}")
+          else if not (data instanceof Buffer)
+            client.logger.log("debug", "failed to download #{location} -- typeof data: #{typeof data} -- length #{data.length} -- invalid type -- content-type: #{response.headers["content-type"]} -- encoding #{response.headers["content-encoding"]} - path : #{path}")
+            client.logger.log("debug", data)
+            if response.headers["content-type"] == "application/json; charset=UTF-8"
+              res = JSON.parse(data)
+              #if file not found,remove it from the tree.
+              #this can happen if another client has deleted
+              if res.error.code == 2003
+                parentPath = client.bitcasaTree.get(pth.dirname(path))
+                filePath = pth.join(parentPath,name)
+                client.folderTree.delete(filePath)
+              if res.error.code = 9006 #api limit
+                fiber = Fiber.current
+                fiberRun = ->
+                  fiber.run()
+                setTimeout(fiberRun, 61000)
+                cb(0,{buffer:new Buffer(0), start:0, end:0})
+                Fiber.yield()
+          else if  data.length < (chunkStart - chunkEnd + 1)
+            client.logger.log("debug", "failed to download #{location} -- #{data.length} - size mismatch")
+          else
+            client.logger.log("debug", "successfully downloaded #{location}")
+            writeFile(location,data)
+            failed = false
+
+          if recurse and failed  #let the fs decide what to do.
             args =
               buffer: new Buffer(0),
               start: 0,
               end : 0
             cb(null,args)
-        else
-          if recurse
+          else if (failed) and (not recurse)
+            client.downloadTree.delete("#{baseName}-#{chunkStart}")
+            cb(null, null)
+          else if not failed
             args =
-              buffer: buffer
-              start: 0
-              end: readSize + 1
-            client.logger.log "debug", "downloading file failed: out of tokens"
-            cb null, args
+              buffer: data,
+              start: start - chunkStart,
+              end : end+1-chunkStart
+            client.downloadTree.delete("#{baseName}-#{chunkStart}")
+            cb(null, args )
           else
-            cb null, null
+            if recurse
+              args =
+                buffer: buffer
+                start: 0
+                end: readSize + 1
+              client.logger.log "debug", "downloading file failed: out of tokens"
+              cb null, args
+            else
+              cb null, null
 
 
     ).run()
