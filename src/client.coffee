@@ -149,6 +149,7 @@ class BitcasaClient
           response = res.response
 
           failed = true #assume that the download failed
+          apiLimit = false #assume that the error was not hitting the apiLimit
           client.logger.log("debug", "downloaded: #{location} - #{chunkEnd-chunkStart} -- limit #{client.rateLimit.getTokensRemaining()}")
 
           if not (data instanceof Buffer)
@@ -162,6 +163,8 @@ class BitcasaClient
                 parentPath = client.bitcasaTree.get(pth.dirname(path))
                 filePath = pth.join(parentPath,name)
                 client.folderTree.delete(filePath)
+              if res.error.code == 9006
+                apiLimit = true
           else if  data.length < (chunkStart - chunkEnd + 1)
             client.logger.log("debug", "failed to download #{location} -- #{data.length} - size mismatch")
           else
@@ -170,7 +173,7 @@ class BitcasaClient
             failed = false
 
 
-          if failed and res.error.code == 9006 #api limit
+          if failed and apiLimit #api limit
             fiber = Fiber.current
             fiberRun = ->
               fiber.run()
