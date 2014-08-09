@@ -99,10 +99,20 @@ class BitcasaFile
         data2 = data2.wait()
         client.downloadTree.delete("#{file.bitcasaBasename}-#{chunkStart+client.chunkSize}", 1)
 
+        if data1.buffer.length == 0
+          cb( buffer, 0, 0)
+          return
+
         data1.buffer.copy(buffer,0,data1.start, data1.end)
+
+
+        if data2.buffer.length == 0
+          cb( buffer, 0, data1.buffer.length )
+          return
         data2.buffer.copy(buffer,data1.end - data1.start, data2.start, data2.end)
 
         cb( buffer, 0, buffer.length )
+        return
       ).run()
     else
       client.logger.log("error", "number of chunks greater than 2 - (#{start}-#{end})");
