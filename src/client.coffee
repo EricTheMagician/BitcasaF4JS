@@ -43,8 +43,15 @@ class BitcasaClient
     @folderTree = new dict({'/': root})
     @bitcasaTree = new dict({'/': '/'})
     @downloadTree = new dict()
-    if @accessToken != null
+    if @accessToken == null
+      throw new Error "accessToken in the config file cannot be blank"
+    else
       @setRest()
+
+    @validateAccessToken (err, data) ->
+      if err
+        console.log  err
+        throw new Error err.message
 
     @downloadLocation = pth.join @cacheLocation, "download"
     @uploadLocation = pth.join @cacheLocation, "upload"
@@ -55,8 +62,8 @@ class BitcasaClient
     @client = new Client
     @client.registerMethod 'getRootFolder', "#{BASEURL}folders/?access_token=#{@accessToken}", "GET"
     @client.registerMethod 'downloadChunk', "#{BASEURL}files/name.ext?path=${path}&access_token=#{@accessToken}", "GET"
-    @client.registerMethod 'getFolder', "#{BASEURL}/folders${path}?access_token=#{@accessToken}&depth=${depth}", "GET"
-
+    @client.registerMethod 'getFolder', "#{BASEURL}folders${path}?access_token=#{@accessToken}&depth=${depth}", "GET"
+    @client.registerMethod 'getUserProfile', "#{BASEURL}user/profile?access_token=#{@accessToken}", "GET"
     @client.on 'error', (err) ->
       console.log('There was an error connecting with bitcasa:', err)
 
@@ -66,6 +73,20 @@ class BitcasaClient
   authenticate: (code) ->
     url = "#{BASEURL}oauth2/access_token?secret=#{@secret}&code=#{code}"
     new Error("Not implemented")
+
+  validateAccessToken: (cb) ->
+    client = @;
+    req = @client.methods.getUserProfile  (data, response) ->
+      try
+        data = JSON.parse(data)
+      catch error
+        @logger.log "debug", "when parsing validation, data was not json"
+        cb error
+        return
+      if data.error
+        throw (new Error data.error)
+    req.on 'error', (err) ->
+      throw new Error err
 
   # callback should take 3 parameters:
   #   a buffer, where to start and where to end.
@@ -179,16 +200,16 @@ class BitcasaClient
               end : end+1-chunkStart
             client.downloadTree.delete("#{baseName}-#{chunkStart}")
             cb(null, args )
+        else
+          if recurse
+            args =
+              buffer: buffer
+              start: 0
+              end: readSize + 1
+            client.logger.log "debug", "downloading file failed: out of tokens"
+            cb null, args
           else
-            if recurse
-              args =
-                buffer: buffer
-                start: 0
-                end: readSize + 1
-              client.logger.log "debug", "downloading file failed: out of tokens"
-              cb null, args
-            else
-              cb null, null
+            cb null, null
 
 
     ).run()
