@@ -48,24 +48,17 @@ class BitcasaClient
     else
       @setRest()
 
-    @validateAccessToken (err, data) ->
-      if err
-        console.log  err
-        throw new Error err.message
-
     @downloadLocation = pth.join @cacheLocation, "download"
     @uploadLocation = pth.join @cacheLocation, "upload"
     fs.ensureDirSync(@downloadLocation)
     fs.ensureDirSync(@uploadLocation)
 
   setRest: ->
-    @client = new Client
+    @client = new Client()
     @client.registerMethod 'getRootFolder', "#{BASEURL}folders/?access_token=#{@accessToken}", "GET"
     @client.registerMethod 'downloadChunk', "#{BASEURL}files/name.ext?path=${path}&access_token=#{@accessToken}", "GET"
     @client.registerMethod 'getFolder', "#{BASEURL}folders${path}?access_token=#{@accessToken}&depth=${depth}", "GET"
     @client.registerMethod 'getUserProfile', "#{BASEURL}user/profile?access_token=#{@accessToken}", "GET"
-    @client.on 'error', (err) ->
-      console.log('There was an error connecting with bitcasa:', err)
 
   loginUrl: ->
     "#{BASEURL}oauth2/authenticate?client_id=#{@id}&redirect_url=#{@redirectUrl}"
@@ -84,9 +77,9 @@ class BitcasaClient
         cb error
         return
       if data.error
-        throw (new Error data.error)
+        cb data.error
     req.on 'error', (err) ->
-      throw new Error err
+      cb err
 
   # callback should take 3 parameters:
   #   a buffer, where to start and where to end.

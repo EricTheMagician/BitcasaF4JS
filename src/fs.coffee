@@ -28,6 +28,10 @@ logger = new (winston.Logger)({
   })
 #bitcasa client
 client = new BitcasaClient(config.clientId, config.secret, config.redirectUrl, logger, config.accessToken, config.chunkSize, config.advancedChunks, config.cacheLocation)
+client.validateAccessToken (err, data) ->
+  if err
+    throw new Error("access token is not valid")
+
 #get folder attributes in the background
 
 #http://lxr.free-electrons.com/source/include/uapi/asm-generic/errno-base.h#L23
