@@ -162,14 +162,6 @@ class BitcasaClient
                 parentPath = client.bitcasaTree.get(pth.dirname(path))
                 filePath = pth.join(parentPath,name)
                 client.folderTree.delete(filePath)
-              if res.error.code = 9006 #api limit
-                fiber = Fiber.current
-                fiberRun = ->
-                  fiber.run()
-                setTimeout(fiberRun, 61000)
-                cb(0,{buffer:new Buffer(0), start:0, end:0})
-                Fiber.yield()
-                return
           else if  data.length < (chunkStart - chunkEnd + 1)
             client.logger.log("debug", "failed to download #{location} -- #{data.length} - size mismatch")
           else
@@ -177,7 +169,15 @@ class BitcasaClient
             writeFile(location,data)
             failed = false
 
-          if recurse and failed  #let the fs decide what to do.
+
+          if failed and res.error.code == 9006 #api limit
+            fiber = Fiber.current
+            fiberRun = ->
+              fiber.run()
+            setTimeout(fiberRun, 61000)
+            Fiber.yield()
+            cb(0,{buffer:new Buffer(0), start:0, end:0})
+          else if recurse and failed  #let the fs decide what to do.
             args =
               buffer: new Buffer(0),
               start: 0,
