@@ -176,7 +176,7 @@ class BitcasaClient
               fiber.run()
             setTimeout(fiberRun, 61000)
             Fiber.yield()
-            cb(0,{buffer:new Buffer(0), start:0, end:0})
+            cb(null,{buffer:new Buffer(0), start:0, end:0})
           else if recurse and failed  #let the fs decide what to do.
             args =
               buffer: new Buffer(0),
