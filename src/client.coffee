@@ -157,9 +157,8 @@ class BitcasaClient
 
           failed = true #assume that the download failed
           client.logger.log("debug", "downloaded: #{location} - #{chunkEnd-chunkStart} -- limit #{client.rateLimit.getTokensRemaining()}")
-          if data.length == 14 and data.toString() == "invalid range"
-            client.logger.log("debug", "failed to download #{location} -- invalid range, path: #{path}")
-          else if not (data instanceof Buffer)
+
+          if not (data instanceof Buffer)
             client.logger.log("debug", "failed to download #{location} -- typeof data: #{typeof data} -- length #{data.length} -- invalid type -- content-type: #{response.headers["content-type"]} -- encoding #{response.headers["content-encoding"]} - path : #{path}")
             client.logger.log("debug", data)
             if response.headers["content-type"] == "application/json; charset=UTF-8"
@@ -177,6 +176,7 @@ class BitcasaClient
                 setTimeout(fiberRun, 61000)
                 cb(0,{buffer:new Buffer(0), start:0, end:0})
                 Fiber.yield()
+                return
           else if  data.length < (chunkStart - chunkEnd + 1)
             client.logger.log("debug", "failed to download #{location} -- #{data.length} - size mismatch")
           else
@@ -200,7 +200,7 @@ class BitcasaClient
               end : end+1-chunkStart
             client.downloadTree.delete("#{baseName}-#{chunkStart}")
             cb(null, args )
-        else
+        else #for not having enough tokens
           if recurse
             args =
               buffer: buffer
