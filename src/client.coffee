@@ -73,7 +73,7 @@ class BitcasaClient
       try
         data = JSON.parse(data)
       catch error
-        @logger.log "debug", "when parsing validation, data was not json"
+        client.logger.log "debug", "when parsing validation, data was not json"
         cb error
         return
       if data.error
