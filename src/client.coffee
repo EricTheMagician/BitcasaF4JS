@@ -102,9 +102,9 @@ class BitcasaClient
       client.logger.log('silly',"cache location: #{location}")
 
       failedArguments =
-        buffer = new Buffer 0
-        start = 0
-        end = 0
+        buffer: new Buffer(0)
+        start: 0
+        end: 0
 
       #check if the data has been cached or not
       #otherwise, download from the web
