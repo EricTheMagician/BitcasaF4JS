@@ -101,6 +101,10 @@ class BitcasaClient
       location = pth.join(client.downloadLocation,"#{baseName}-#{chunkStart}-#{chunkEnd}")
       client.logger.log('silly',"cache location: #{location}")
 
+      failedArguments =
+        buffer = new Buffer 0
+        start = 0
+        end = 0
 
       #check if the data has been cached or not
       #otherwise, download from the web
@@ -119,7 +123,7 @@ class BitcasaClient
           client.logger.log('silly',"file exists: #{location}--#{buffer.slice(start,end).length}")
           return cb(null,args)
         else
-          cb(null,null)
+          cb(null,failedArguments)
       else
         client.logger.log("debug", "#{name} - downloading #{chunkStart}-#{chunkEnd}")
         if client.rateLimit.tryRemoveTokens(1)
@@ -143,7 +147,7 @@ class BitcasaClient
           try
             res = download().wait()
           catch error
-            cb(error)
+            cb(error,failedArguments)
 
           data = res.data
           response = res.response
@@ -179,7 +183,7 @@ class BitcasaClient
               fiber.run()
             setTimeout(fiberRun, 61000)
             Fiber.yield()
-            cb(null,{buffer:new Buffer(0), start:0, end:0})
+            cb(null,failedArguments)
           else if recurse and failed  #let the fs decide what to do.
             args =
               buffer: new Buffer(0),
@@ -188,7 +192,7 @@ class BitcasaClient
             cb(null,args)
           else if (failed) and (not recurse)
             client.downloadTree.delete("#{baseName}-#{chunkStart}")
-            cb(null, null)
+            cb(null, failedArguments)
           else if not failed
             args =
               buffer: data,
@@ -197,15 +201,8 @@ class BitcasaClient
             client.downloadTree.delete("#{baseName}-#{chunkStart}")
             cb(null, args )
         else #for not having enough tokens
-          if recurse
-            args =
-              buffer: buffer
-              start: 0
-              end: readSize + 1
-            client.logger.log "debug", "downloading file failed: out of tokens"
-            cb null, args
-          else
-            cb null, null
+          client.logger.log "debug", "downloading file failed: out of tokens"
+          cb null, failedArguments
 
 
     ).run()
