@@ -518,21 +518,19 @@ class BitcasaClient
     ).run()
 
   deleteFolfder: (path, cb) ->
-    args =
-      path:
-        path: path
-    req = @client.methods.deleteFolder args, (data, response)->
-      try
-        data = JSON.parse(data)
-      catch error
-        return cb("data was likely not json")
+    rest.del "#{BASEURL}folders?access_token=#{@accessToken}", {data:{path: path}}
+    .on 'complete', (result) ->
+      if result instanceof Error
+        cb(result)
+      else
+        if result.error
+          cb result.error
+        else
+          # client.bitcasaTree.set o.path, realPath
+          # client.folderTree.set realPath, new BitcasaFolder client, o.path, o.name, o.ctime, o.mtime, []
+          cb null, result
 
-      res =
-        data:data
-        response: response
-      cb null, res
-    req.on 'error', (err)->
-      cb err
+
 
 
 
