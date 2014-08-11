@@ -95,6 +95,19 @@ class BitcasaFolder
         cb null, args
     client.createFolder(@bitcasaPath,name, callback)
 
+  deleteFolder: (cb) ->
+    folder = @
+    client = @client
+    callback = (err, args) ->
+      if err
+        return cb err
+      realPath = client.bitcasaTree.get folder.bitcasaPath
+      client.bitcasaTree.delete folder.bitcasaPath
+      client.folderTree.delete realPath
+      cb null, true
+
+    client.deleteFolder(@bitcasaPath, callback)
+
 
 
 module.exports.folder = BitcasaFolder
