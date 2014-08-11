@@ -17,11 +17,20 @@ describe.only 'FUSE filesystem', ->
     callback = (err,stdout, stderr)->
       if err
         done("There was an error #{err}")
+        return
       expect(stdout).to.contain("Bitcasa Infinite Drive")
       done()
     exec("ls #{config.mountPoint}", callback )
 
-  it 'should be able to create a directory'
+  it 'should be able to create a directory', (done) ->
+    callback = (err,stdout, stderr)->
+      if err
+        done("There was an error #{err}")
+        return
+      console.log stdout
+      console.log stderr
+      done()
+    exec "mkdir \"#{config.mountPoint}/Bitcasa Infinite Drive/BitcasaF4JS\"", callback
   it 'should not be able to create a directory with more than 64 chars'
   it 'should be able to create a file'
   it 'should not be able to remove a non-empty folder'

@@ -176,6 +176,19 @@ unlink = (path, cb) ->
     object.delete callback
     return
 
+mkdir = (path, mode, cb) ->
+  callback = (err, args) ->
+    if err
+      cb -errnoMap.ENOENT
+    else
+      cb 0
+  parent = pth.dirname path
+  name = pth.basename path
+  folder = client.folderTree.get parent
+  if folder
+    folder.createFolder name, callback
+  else
+    cb -errnoMap.ENOENT
 
 
 destroy = (cb) ->
@@ -196,7 +209,7 @@ handlers =
   # create: create,
   unlink: unlink,
   # rename: rename,
-  # mkdir: mkdir,
+  mkdir: mkdir,
   # rmdir: rmdir,
   # init: init,
   destroy: destroy
