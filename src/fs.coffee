@@ -1,6 +1,6 @@
 #do this for mocha testing
 if Object.keys( module.exports ).length == 0
-  config = require('../build/config.json')
+  config = require('../build/test.config.json')
   BitcasaClient = require( '../src/client.coffee').client
   BitcasaFolder = require( '../src/folder.coffee').folder
   BitcasaFile = require( '../src/file.coffee').file

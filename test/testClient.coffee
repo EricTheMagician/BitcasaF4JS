@@ -43,7 +43,7 @@ describe 'BitcasaClient', ->
       else
         done()
     client.validateAccessToken(cb)
-  describe.only 'when in use', ->
+  describe 'when in use', ->
     client = new BitcasaClient(config.clientId, config.secret, config.redirectUrl, logger, config.accessToken, config.chunkSize, config.advancedChunks, config.cacheLocation)
     download = Future.wrap(client.download)
     fileContent = 'hello world.txt'
