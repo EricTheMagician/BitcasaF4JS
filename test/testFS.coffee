@@ -3,14 +3,14 @@ winston = require 'winston'
 expect = chai.expect
 md5 = require 'MD5'
 config = require '../build/config.json'
-fs = require 'fs'
+# fs = require 'fs'
 sys = require('sys')
 exec = require('child_process').exec;
 
 describe.skip 'FUSE filesystem', ->
 
   it 'should be mountable', (done)->
-    require '../src/fs.coffee'
+    # require '../src/fs.coffee'
     done()
 
   it 'should list the infinite drive', (done) ->

@@ -68,4 +68,33 @@ class BitcasaFolder
       ctime: @ctime
     cb(0,attr)
 
+  uploadFile: (filePath, cb) ->
+    client = @client
+    filename = pth.basename filePath
+    parentPath = client.bitcasaTree.get @bitcasaPath
+
+    newPath = pth.join parentPath, filename
+    callback = (err, arg)->
+      if err
+        cb err
+      else
+        client.folderTree.set newPath, new BitcasaFile(client, arg.path, arg.name, arg.size, new Date(arg.ctime), new Date(arg.mtime) )
+
+    @client.upload client, @bitcasaPath, filename, cb
+
+  createFolder: (name, cb) ->
+    client = @client
+    folder = @
+    callback = (err, args) ->
+      if err
+        cb err
+      else
+        newPath = "#{client.bitcasaTree.get(folder.bitcasaPath)}/#{name}"
+        client.folderTree.set newPath, new BitcasaFolder(client, args.path, args.name, new Date args.ctime, new Date args.mtime, [])
+        client.bitcasaTree.set args.path, newPath
+        cb null, args
+    client.createFolder(@bitcasaPath,name, callback)
+
+
+
 module.exports.folder = BitcasaFolder

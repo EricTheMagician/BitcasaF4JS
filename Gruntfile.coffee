@@ -31,8 +31,8 @@ module.exports = (grunt) ->
         }
       },
       scripts:{
-        files:['src/*.coffee', 'test/**/*.coffee']
-        tasks:['coffee','mochaTest']
+        files:['src/file.coffee', 'src/folder.coffee', 'src/client.coffee', 'src/fs.coffee', 'test/**/*.coffee']
+        tasks:['coffee']
       }
     },
     mochaTest: {

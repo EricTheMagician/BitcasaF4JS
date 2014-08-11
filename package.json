@@ -23,7 +23,9 @@
     "fuse4js": "~0.1.9",
     "limiter": "~1.0.5",
     "memoizee": "~0.3.5",
+    "mmmagic": "^0.3.8",
     "node-rest-client": "git+http://github.com/thejinx0r/node-rest-client#e189708160e41d4d4ee2377b8415c7cd51d3037a",
+    "restler": "^3.2.2",
     "winston": "~0.7.3"
   },
   "devDependencies": {
