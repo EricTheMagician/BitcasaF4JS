@@ -129,9 +129,12 @@ class BitcasaFile
         end += file.client.chunkSize
 
     .run()
-
     parent = @client.bitcasaTree.get(pth.dirname(@bitcasaPath))
     realPath = pth.join(parent, @name)
     @client.folderTree.delete(realPath)
+
+    parentFolder = @client.folderTree.get( parent )
+    idx = parentFolder.children.indexOf @name
+    parentFolder.children.splice idx, 1
     @client.deleteFile(@bitcasaPath,cb)
 module.exports.file = BitcasaFile

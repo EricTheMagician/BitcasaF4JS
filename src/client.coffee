@@ -288,11 +288,7 @@ class BitcasaClient
           if result.error
             cb result.error
           else
-            o = result.result.items[0]
-            realPath = "#{client.bitcasaTree.get(parentPath)}/#{o.name}"
-            console.log realPath
-            client.folderTree.set realPath, new BitcasaFile client, o.path, o.name, o.size, o.ctime, o.mtime
-            cb null, result.result.items
+            cb null, result.result.items[0]
     ).run()
 
   loadFolderTree: (getAll=true)->
@@ -472,8 +468,6 @@ class BitcasaClient
         if result.error
           cb result.error
         else
-          # client.bitcasaTree.set o.path, realPath
-          # client.folderTree.set realPath, new BitcasaFolder client, o.path, o.name, o.ctime, o.mtime, []
           cb null, result
     # args =
     #   path:
@@ -517,22 +511,20 @@ class BitcasaClient
             cb null, result.result.items[0]
     ).run()
 
-  deleteFolfder: (path, cb) ->
-    args =
-      path:
-        path: path
-    req = @client.methods.deleteFolder args, (data, response)->
-      try
-        data = JSON.parse(data)
-      catch error
-        return cb("data was likely not json")
+  deleteFolder: (path, cb) ->
+    rest.del "#{BASEURL}folders?access_token=#{@accessToken}", {data:{path: path}}
+    .on 'complete', (result) ->
+      if result instanceof Error
+        cb(result)
+      else
+        if result.error
+          cb result.error
+        else
+          # client.bitcasaTree.set o.path, realPath
+          # client.folderTree.set realPath, new BitcasaFolder client, o.path, o.name, o.ctime, o.mtime, []
+          cb null, result
 
-      res =
-        data:data
-        response: response
-      cb null, res
-    req.on 'error', (err)->
-      cb err
+
 
 
 
