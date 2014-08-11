@@ -54,7 +54,7 @@ class BitcasaFolder
         else
           client.folderTree.set realPath, new BitcasaFile(client, o.path, o.name,o.size,  new Date(o.ctime), new Date(o.mtime))
     catch error
-      console.log 'data was likely not a json variable', error, data
+      client.logger.log "debug", 'data was likely not a json variable', error, data
       if typeof(retry) == typeof(Function)
         retry()
     if typeof(cb) == typeof(Function)
@@ -69,18 +69,21 @@ class BitcasaFolder
     cb(0,attr)
 
   uploadFile: (filePath, cb) ->
+    folder = @
     client = @client
     filename = pth.basename filePath
     parentPath = client.bitcasaTree.get @bitcasaPath
 
     newPath = pth.join parentPath, filename
+
     callback = (err, arg)->
       if err
-        cb err
-      else
-        client.folderTree.set newPath, new BitcasaFile(client, arg.path, arg.name, arg.size, new Date(arg.ctime), new Date(arg.mtime) )
-
-    @client.upload client, @bitcasaPath, filename, cb
+        return cb err
+      client.folderTree.set newPath, new BitcasaFile(client, arg.path, arg.name, arg.size, new Date(arg.ctime), new Date(arg.mtime) )
+      if filename not in folder.children
+        folder.children.push filename
+      cb null, arg
+    @client.upload client, @bitcasaPath, filename, callback
 
   createFolder: (name, cb) ->
     client = @client
@@ -90,12 +93,12 @@ class BitcasaFolder
         cb err
       else
         newPath = "#{client.bitcasaTree.get(folder.bitcasaPath)}/#{name}"
-        client.folderTree.set newPath, new BitcasaFolder(client, args.path, args.name, new Date args.ctime, new Date args.mtime, [])
+        client.folderTree.set newPath, new BitcasaFolder(client, args.path, args.name, new Date( args.ctime), new Date( args.mtime) , [])
         client.bitcasaTree.set args.path, newPath
         cb null, args
     client.createFolder(@bitcasaPath,name, callback)
 
-  deleteFolder: (cb) ->
+  delete: (cb) ->
     folder = @
     client = @client
     callback = (err, args) ->
@@ -105,8 +108,10 @@ class BitcasaFolder
       client.bitcasaTree.delete folder.bitcasaPath
       client.folderTree.delete realPath
       cb null, true
-
-    client.deleteFolder(@bitcasaPath, callback)
+    if @children.length == 0
+      client.deleteFolder(@bitcasaPath, callback)
+    else
+      cb("folder not empty")
 
 
 
