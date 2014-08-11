@@ -156,6 +156,28 @@ readdir = (path, cb) ->
     err = -errnoMap.ENOENT
 
   return cb( err, names );
+
+#delete files and folder
+unlink = (path, cb) ->
+  object = client.folderTree.get path
+  callback = (err,args) ->
+    if err
+      cb -errnoMap.ENOTEMPTY
+    else
+      cb 0
+
+  if object == undefined
+    cb -errnoMap.ENOENT
+    return
+  else if object instanceof BitcasaFile
+    object.delete callbback
+    return
+  else if object instanceof BitcasaFolder
+    object.delete callback
+    return
+
+
+
 destroy = (cb) ->
   return cb(0)
 
@@ -172,7 +194,7 @@ handlers =
   # write: write,
   # release: release,
   # create: create,
-  # unlink: unlink,
+  unlink: unlink,
   # rename: rename,
   # mkdir: mkdir,
   # rmdir: rmdir,
