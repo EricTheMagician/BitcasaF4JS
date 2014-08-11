@@ -364,6 +364,10 @@ class BitcasaClient
         processing = []
         client.logger.log  "silly", "folders length = #{folders.length}, processing length: #{processing.length}"
         tokens = Math.min(Math.floor(client.rateLimit.getTokensRemaining()/6), folders.length - processing.length)
+        if tokens < 30
+          setTimeout fiberRun, 30000
+          Fiber.yield()
+          continue
         for i in [0...tokens]
           if not client.rateLimit.tryRemoveTokens(1)
             setTimeout fiberRun, 1000
