@@ -13,9 +13,11 @@ class BitcasaFolder
   constructor: (@client, @bitcasaPath, @name, @ctime, @mtime, @children = [])->
 
   @parseItems: (client,items) ->
+    keys = []
     for o in items
       parent = client.bitcasaTree.get(pth.dirname(o.path))
       realPath = pth.join(parent,o.name)
+      keys.push realPath
 
       #add child to parent folder
       parentFolder = client.folderTree.get parent
@@ -28,6 +30,7 @@ class BitcasaFolder
         client.folderTree.set( realPath, new BitcasaFolder(client, o.path, o.name, new Date(o.ctime), new Date(o.mtime), []) )
       else
         client.folderTree.set realPath, new BitcasaFile(client, o.path, o.name,o.size,  new Date(o.ctime), new Date(o.mtime))
+    return keys
 
 
   @parseFolder: (data, response, client, retry, cb) ->
