@@ -211,6 +211,9 @@ class BitcasaClient
           catch error
             cb(error,failedArguments)
 
+          if not res
+            cb null, failedArguments
+
           data = res.data
           response = res.response
 
