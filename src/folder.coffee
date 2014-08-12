@@ -113,8 +113,8 @@ class BitcasaFolder
       client.folderTree.delete realPath
 
       parentFolder = client.folderTree.get pth.dirname realPath
-      idx = parentFolder.indexOf folder.name
-      parentFolder.splice idx, 1
+      idx = parentFolder.children.indexOf folder.name
+      parentFolder.children.splice idx, 1
 
       cb null, true
     if @children.length == 0

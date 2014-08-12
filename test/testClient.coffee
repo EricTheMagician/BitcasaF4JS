@@ -37,7 +37,6 @@ describe 'BitcasaClient', ->
   it 'should validate a valid accessToken', (done) ->
     client = new BitcasaClient(config.clientId, config.secret, config.redirectUrl, logger, config.accessToken, config.chunkSize, config.advancedChunks, config.cacheLocation)
     cb = (err, data) ->
-      console.log "validate callback"
       if err
         done(err)
       else
@@ -83,6 +82,7 @@ describe 'BitcasaClient', ->
           done()
 
       folder = client.folderTree.get('/Bitcasa Infinite Drive/BitcasaF4JS')
+      expect(folder).to.exist
       folder.uploadFile './test.file', callback
 
     it 'should be able to download files properly', (done) ->
@@ -92,6 +92,7 @@ describe 'BitcasaClient', ->
         expect( buffer.toString() ).to.equal(fileContent)
         expect( end - start ).to.equal(fileContent.length)
         location = "#{config.cacheLocation}/download/#{file.bitcasaBasename}-0-#{file.size-1}"
+        console.log location
         expect( fs.existsSync(location) ).to.be.true
         done()
 
@@ -115,6 +116,7 @@ describe 'BitcasaClient', ->
         else
           done(args)
       folder = client.folderTree.get('/Bitcasa Infinite Drive/BitcasaF4JS')
+      expect(folder).to.exist
       folder.delete callback
 
 
@@ -144,6 +146,7 @@ describe 'BitcasaClient', ->
         else
           done(arg)
       folder = client.folderTree.get('/Bitcasa Infinite Drive/BitcasaF4JS')
+      expect(folder).to.exist
       folder.createFolder("long folder with more than 64 characthers - it is actually 65 now", callback)
 
 
@@ -156,4 +159,5 @@ describe 'BitcasaClient', ->
           expect(folder.children).to.not.contain "BitcasaF4JS"
           done()
       folder = client.folderTree.get('/Bitcasa Infinite Drive/BitcasaF4JS')
+      expect(folder).to.exist
       folder.delete callback

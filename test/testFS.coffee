@@ -7,7 +7,7 @@ fs = require 'fs-extra'
 sys = require 'sys'
 exec = require('child_process').exec;
 
-describe.only 'FUSE filesystem', ->
+describe 'FUSE filesystem', ->
 
   it 'should be mountable', (done)->
     require '../src/fs.coffee'
@@ -62,21 +62,30 @@ describe.only 'FUSE filesystem', ->
   it 'should be able to copy files'
 
   it 'should be able to delete an empty folder', (done) ->
-    callback = (err,stdout, stderr)->
+    callback3 = (err,stdout, stderr)->
       if err
-        console.log err
         done("There was an error #{err}")
         return
-      callback2 = (err,stdout, stderr)->
+      expect(stdout).to.contain("BitcasaF4JS")
+
+      callback = (err,stdout, stderr)->
         if err
           console.log err
           done("There was an error #{err}")
           return
+        callback2 = (err,stdout, stderr)->
+          if err
+            console.log err
+            done("There was an error #{err}")
+            return
 
-        expect(stdout).to.not.contain("BitcasaF4JS")
-        done()
-      exec("ls \"#{config.mountPoint}/Bitcasa Infinite Drive\"", callback2 )
-    exec "rmdir \"#{config.mountPoint}/Bitcasa Infinite Drive/BitcasaF4JS\"", callback
+          expect(stdout).to.not.contain("BitcasaF4JS")
+          done()
+        exec("ls \"#{config.mountPoint}/Bitcasa Infinite Drive\"", callback2 )
+      exec "rmdir \"#{config.mountPoint}/Bitcasa Infinite Drive/BitcasaF4JS\"", callback
+
+    exec("ls \"#{config.mountPoint}/Bitcasa Infinite Drive\"", callback3 )
+
 
 
   it 'should be unmountable', (done) ->
