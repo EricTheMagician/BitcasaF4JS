@@ -88,16 +88,19 @@ class BitcasaFolder
   createFolder: (name, cb) ->
     client = @client
     folder = @
+    newPath = "#{client.bitcasaTree.get(folder.bitcasaPath)}/#{name}"
     callback = (err, args) ->
       if err
         cb err
       else
-        newPath = "#{client.bitcasaTree.get(folder.bitcasaPath)}/#{name}"
         client.folderTree.set newPath, new BitcasaFolder(client, args.path, args.name, new Date( args.ctime), new Date( args.mtime) , [])
         client.bitcasaTree.set args.path, newPath
         folder.children.push name
         cb null, args
-    client.createFolder(@bitcasaPath,name, callback)
+    if client.folderTree.has newPath
+      cb("folder already exists")
+    else
+      client.createFolder(@bitcasaPath,name, callback)
 
   delete: (cb) ->
     folder = @
