@@ -41,6 +41,7 @@ errnoMap =
     EPERM: 1,
     ENOENT: 2,
     EACCES: 13,
+    EEXIST: 17,
     ENOTDIR: 20,
     EINVAL: 22,
     ENOTEMPTY: 39
@@ -218,7 +219,7 @@ try
   client.logger.log "info", 'attempting to start f4js'
   opts = switch os.type()
     when 'Linux' then  ["-o", "allow_other"]
-    when 'Darwin' then  ["-o", "allow_other", "-o", "noappledouble", "-o", "daemon_timeout=0"]
+    when 'Darwin' then  ["-o", "allow_other", "-o", "noappledouble", "-o", "daemon_timeout=0", '-o', 'nolocalcaches']
     else []
   fs.ensureDirSync(config.mountPoint)
   f4js.start(config.mountPoint, handlers, false, opts);
