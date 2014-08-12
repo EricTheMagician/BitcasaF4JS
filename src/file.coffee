@@ -3,6 +3,7 @@ Future = require('fibers/future')
 Fiber = require 'fibers'
 wait = Future.wait
 fs = require 'fs-extra'
+unlink = Future.wrap(fs.unlink)
 class BitcasaFile
   @fileAttr: 0o100777 #according to filesystem information, the 15th bit is set and the read and write are available for everyone
   constructor: (@client,@bitcasaPath, @name, @size, @ctime, @mtime) ->
@@ -32,14 +33,6 @@ class BitcasaFile
           _callback = (err, data) ->
             client.downloadTree.delete("#{baseName}-#{rStart}")
           client.download(client, file.bitcasaPath, file.name, rStart,rEnd,file.size, false, _callback )
-
-  # if recurse
-  #   #download the last chunk in advance
-  #   maxStart = Math.floor( maxSize / client.chunkSize) * client.chunkSize
-  #   recursive maxStart, maxSize
-  #   #download the next few chunks in advance
-  #   recursive(chunkStart + num*client.chunkSize, chunkEnd + 1 + num*client.chunkSize)  for num in [1..client.advancedChunks]
-
 
   download: (start,end, cb) ->
     #check to see if part of the file is being downloaded or in use
@@ -122,4 +115,26 @@ class BitcasaFile
         start: 0
         end: 0
       cb(null, r)
+
+  delete: (cb) ->
+    file = @
+    Fiber ->
+      start = 0
+      end = file.client.chunkSize - 1
+      while start < file.size
+        end = Math.min end, file.size - 1
+        location = "#{file.client.downloadLocation}/#{file.bitcasaBasename}-#{start}-#{end}"
+        unlink(location).wait()
+        start += file.client.chunkSize
+        end += file.client.chunkSize
+
+    .run()
+    parent = @client.bitcasaTree.get(pth.dirname(@bitcasaPath))
+    realPath = pth.join(parent, @name)
+    @client.folderTree.delete(realPath)
+
+    parentFolder = @client.folderTree.get( parent )
+    idx = parentFolder.children.indexOf @name
+    parentFolder.children.splice idx, 1
+    @client.deleteFile(@bitcasaPath,cb)
 module.exports.file = BitcasaFile

@@ -13,9 +13,11 @@ class BitcasaFolder
   constructor: (@client, @bitcasaPath, @name, @ctime, @mtime, @children = [])->
 
   @parseItems: (client,items) ->
+    keys = []
     for o in items
       parent = client.bitcasaTree.get(pth.dirname(o.path))
       realPath = pth.join(parent,o.name)
+      keys.push realPath
 
       #add child to parent folder
       parentFolder = client.folderTree.get parent
@@ -28,6 +30,7 @@ class BitcasaFolder
         client.folderTree.set( realPath, new BitcasaFolder(client, o.path, o.name, new Date(o.ctime), new Date(o.mtime), []) )
       else
         client.folderTree.set realPath, new BitcasaFile(client, o.path, o.name,o.size,  new Date(o.ctime), new Date(o.mtime))
+    return keys
 
 
   @parseFolder: (data, response, client, retry, cb) ->
@@ -54,7 +57,7 @@ class BitcasaFolder
         else
           client.folderTree.set realPath, new BitcasaFile(client, o.path, o.name,o.size,  new Date(o.ctime), new Date(o.mtime))
     catch error
-      console.log 'data was likely not a json variable', error, data
+      client.logger.log "debug", 'data was likely not a json variable', error, data
       if typeof(retry) == typeof(Function)
         retry()
     if typeof(cb) == typeof(Function)
@@ -67,5 +70,61 @@ class BitcasaFolder
       mtime: @mtime,
       ctime: @ctime
     cb(0,attr)
+
+  uploadFile: (filePath, cb) ->
+    folder = @
+    client = @client
+    filename = pth.basename filePath
+    parentPath = client.bitcasaTree.get @bitcasaPath
+
+    newPath = pth.join parentPath, filename
+
+    callback = (err, arg)->
+      if err
+        return cb err
+      client.folderTree.set newPath, new BitcasaFile(client, arg.path, arg.name, arg.size, new Date(arg.ctime), new Date(arg.mtime) )
+      if filename not in folder.children
+        folder.children.push filename
+      cb null, arg
+    @client.upload client, @bitcasaPath, filename, callback
+
+  createFolder: (name, cb) ->
+    client = @client
+    folder = @
+    newPath = "#{client.bitcasaTree.get(folder.bitcasaPath)}/#{name}"
+    callback = (err, args) ->
+      if err
+        cb err
+      else
+        client.folderTree.set newPath, new BitcasaFolder(client, args.path, args.name, new Date( args.ctime), new Date( args.mtime) , [])
+        client.bitcasaTree.set args.path, newPath
+        folder.children.push name
+        cb null, args
+    if client.folderTree.has newPath
+      cb("folder already exists")
+    else
+      client.createFolder(@bitcasaPath,name, callback)
+
+  delete: (cb) ->
+    folder = @
+    client = @client
+    callback = (err, args) ->
+      if err
+        return cb err
+      realPath = client.bitcasaTree.get folder.bitcasaPath
+      client.bitcasaTree.delete folder.bitcasaPath
+      client.folderTree.delete realPath
+
+      parentFolder = client.folderTree.get pth.dirname realPath
+      idx = parentFolder.children.indexOf folder.name
+      parentFolder.children.splice idx, 1
+
+      cb null, true
+    if @children.length == 0
+      client.deleteFolder(@bitcasaPath, callback)
+    else
+      cb("folder not empty")
+
+
 
 module.exports.folder = BitcasaFolder

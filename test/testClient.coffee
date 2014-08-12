@@ -3,12 +3,13 @@ winston = require 'winston'
 expect = chai.expect
 md5 = require 'MD5'
 modules = require '../src/client.coffee'
-config = require '../build/config.json'
+config = require '../build/test.config.json'
 fs = require 'fs'
 BitcasaClient = modules.client
 Future = require('fibers/future')
 Fiber = require 'fibers'
 wait = Future.wait
+pth = require 'path'
 
 
 logger = new (winston.Logger)({
@@ -37,37 +38,126 @@ describe 'BitcasaClient', ->
     client = new BitcasaClient(config.clientId, config.secret, config.redirectUrl, logger, config.accessToken, config.chunkSize, config.advancedChunks, config.cacheLocation)
     cb = (err, data) ->
       if err
-        done()
+        done(err)
       else
-        err(data)
+        done()
     client.validateAccessToken(cb)
   describe 'when in use', ->
     client = new BitcasaClient(config.clientId, config.secret, config.redirectUrl, logger, config.accessToken, config.chunkSize, config.advancedChunks, config.cacheLocation)
     download = Future.wrap(client.download)
-    #
-    # it 'should be able to download text files properly', (done)->
-    #   Fiber( ->
-    #     res = download(client,'/Yz_YeHx0RLqIXWEQo6V8Eg/Dp4K3RLQTW2ilY1lo81Iww','file.ext',0,321,322, true).wait()
-    #     buffer = res.buffer.slice(start,end)
-    #     start = res.start
-    #     end = res.end
-    #     expect(end-start).to.equal(322)
-    #     expect( md5(buffer.slice(start,end)) ).to.equal('599b9f55c2474fcea19e2147fe91e8ab')
-    #     done()
-    #   ).run()
-    # it 'should be able to download binary files properly', (done)->
-    #   Fiber( ->
-    #     res = download(client,'/m__k6DI5SGOHivKQlBuqyw/NJgui8PDQa-v51BIW1Pj3Q','file.ext',0,1378573,1378574, true).wait()
-    #     newbuf = res.buffer.slice( start,end)
-    #     start = res.start
-    #     end = res.end
-    #     expect(end-start).to.equal(1378574)
-    #     expect(newbuf.length).to.equal(1378574)
-    #     expect( md5(newbuf) ).to.equal('4c898a28359a0aa8962adb0fc9661906')
-    #     done()
-    #   ).run()
-    # it 'should download large files properly', () ->
-    #   buffer = new Buffer 69695838
-    #   callback = (dataBuf, start, end)->
-    #     data
-    #   # client.download('/BqRTHzyOSm2PVYt02cTNCw/HzERXLW7TkOvT7ld8NF_mw')
+    fileContent = 'hello world.txt'
+
+    it 'should load folders', (done)->
+      client.loadFolderTree(false)
+      setTimeout done, 3000
+
+    it 'should be able to create directories', (done) ->
+      folder = client.folderTree.get("/Bitcasa Infinite Drive")
+      expect(folder).to.exist
+      callback = (err, data)->
+        if err
+          done(err)
+          return
+        folder2 = client.folderTree.get("/Bitcasa Infinite Drive/BitcasaF4JS")
+        expect( folder2 ).to.exist
+
+        folder = client.folderTree.get("/Bitcasa Infinite Drive")
+        expect( folder.children ).to.contain("BitcasaF4JS")
+        done()
+      folder.createFolder 'BitcasaF4JS', callback
+
+
+    it 'should be able to upload files', (done) ->
+      fs.writeFileSync('test.file',fileContent)
+      callback = (err, args) ->
+        fs.unlinkSync('test.file')
+        if err
+          console.log "error message from uploading", err
+          done new Error(err.message)
+        else
+          file = client.folderTree.get( "/Bitcasa Infinite Drive/BitcasaF4JS/test.file")
+          expect(file).to.exist
+          folder = client.folderTree.get( "/Bitcasa Infinite Drive/BitcasaF4JS")
+          expect(folder.children).to.contain("test.file")
+          done()
+
+      folder = client.folderTree.get('/Bitcasa Infinite Drive/BitcasaF4JS')
+      expect(folder).to.exist
+      folder.uploadFile './test.file', callback
+
+    it 'should be able to download files properly', (done) ->
+      file = client.folderTree.get( "/Bitcasa Infinite Drive/BitcasaF4JS/test.file")
+      expect(file).to.exist
+      cb = (buffer, start,end)->
+        expect( buffer.toString() ).to.equal(fileContent)
+        expect( end - start ).to.equal(fileContent.length)
+        location = "#{config.cacheLocation}/download/#{file.bitcasaBasename}-0-#{file.size-1}"
+        console.log location
+        expect( fs.existsSync(location) ).to.be.true
+        done()
+
+      file.download(0, file.size-1, cb)
+
+    it 'should be able to download files from cache as well', (done) ->
+      file = client.folderTree.get( "/Bitcasa Infinite Drive/BitcasaF4JS/test.file")
+      expect(file).to.exist
+      cb = (buffer, start,end)->
+        expect( buffer.toString() ).to.equal(fileContent)
+        expect( end - start ).to.equal(fileContent.length)
+        expect( fs.existsSync("#{config.cacheLocation}/download/#{file.bitcasaBasename}-0-#{fileContent.length-1}")).to.be.true
+        done()
+
+      file.download(0, file.size-1, cb)
+
+    it 'should fail to delete a non empty directory', (done) ->
+      callback = (err,args) ->
+        if err
+          done()
+        else
+          done(args)
+      folder = client.folderTree.get('/Bitcasa Infinite Drive/BitcasaF4JS')
+      expect(folder).to.exist
+      folder.delete callback
+
+
+    it 'should be able to delete files', (done) ->
+      file = client.folderTree.get( "/Bitcasa Infinite Drive/BitcasaF4JS/test.file")
+      expect(file).to.exist
+
+      callback = (err, args) ->
+        if err
+          done(err)
+        else
+          expect( client.folderTree.get( "/Bitcasa Infinite Drive/BitcasaF4JS/test.file") ).to.not.exist
+          expect( fs.existsSync("#{config.downloadLocation}/#{file.bitcasaBasename}-0-#{fileContent.length-1}")).to.not.be.true
+          folder = client.folderTree.get( "/Bitcasa Infinite Drive/BitcasaF4JS")
+          expect(folder.children).to.not.contain("test.file")
+          expect(folder.children.length).to.equal(0)
+
+          done()
+
+      file.delete(callback)
+
+    it 'should fail to create directories greater than 64 bytes', (done) ->
+      callback = (err, arg) ->
+        if err
+          expect(err.code).to.equal(2031)
+          done()
+        else
+          done(arg)
+      folder = client.folderTree.get('/Bitcasa Infinite Drive/BitcasaF4JS')
+      expect(folder).to.exist
+      folder.createFolder("long folder with more than 64 characthers - it is actually 65 now", callback)
+
+
+    it 'should be able to delete empty directories', ->
+      callback = (err,args) ->
+        if err
+          done(err)
+        else
+          folder = client.folderTree.get('/Bitcasa Infinite Drive/BitcasaF4JS')
+          expect(folder.children).to.not.contain "BitcasaF4JS"
+          done()
+      folder = client.folderTree.get('/Bitcasa Infinite Drive/BitcasaF4JS')
+      expect(folder).to.exist
+      folder.delete callback

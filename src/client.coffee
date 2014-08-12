@@ -10,7 +10,26 @@ Future = require('fibers/future')
 Fiber = require 'fibers'
 wait = Future.wait
 
-#wrap async files to sync mode using fibers
+#for mocha testing
+if Object.keys( module.exports ).length == 0
+  r = require './folder.coffee'
+  BitcasaFolder = r.folder
+
+  r = require './file.coffee'
+  BitcasaFile = r.file
+
+else
+  BitcasaFolder = module.exports.folder
+  BitcasaFile = module.exports.file
+
+
+#these libraries are required for file upload
+rest = require 'restler'
+mmm = require('mmmagic')
+Magic = mmm.Magic
+magic = new Magic(mmm.MAGIC_MIME_TYPE)
+
+#wrap async fs methods to sync mode using fibers
 writeFile = Future.wrap(fs.writeFile)
 open = Future.wrap(fs.open)
 read = Future.wrap(fs.read)
@@ -24,13 +43,44 @@ _close = (path,cb) ->
   fs.close path, (err) ->
     cb(err, true)
 close = Future.wrap(_close)
+stats = Future.wrap(fs.stat)
 
-#for mocha testing
-if Object.keys( module.exports ).length == 0
-  r = require './folder.coffee'
-  BitcasaFolder = r.folder
-else
-  BitcasaFolder = module.exports.folder
+
+#wrap mime type detection with fibers
+f = (file, cb) ->
+  magic.detectFile file, (err, res) ->
+    cb(err,res)
+detectFile = Future.wrap(f)
+
+#wrap get folder
+_getFolder = (client, path, depth, cb) ->
+  args =
+    path:
+      path: path
+      depth: depth
+      timeout: 120000
+  returned = false
+
+  #if not done after 5 minutes, we have a problem
+  callback = ->
+    if not returned
+      returned = true
+      cb("taking to long to getFolder")
+  timeout = setTimeout callback, 300000
+
+  req = client.client.methods.getFolder args, (data, response) ->
+    if not returned
+      returned = true
+      clearTimeout timeout
+      cb(null, data)
+
+  req.on 'error', (err) ->
+    if not returned
+      returned = true
+      clearTimeout timeout
+      cb(err)
+
+getFolder = Future.wrap(_getFolder)
 
 
 memoizeMethods = require('memoizee/methods')
@@ -59,7 +109,7 @@ class BitcasaClient
     @client.registerMethod 'downloadChunk', "#{BASEURL}files/name.ext?path=${path}&access_token=#{@accessToken}", "GET"
     @client.registerMethod 'getFolder', "#{BASEURL}folders${path}?access_token=#{@accessToken}&depth=${depth}", "GET"
     @client.registerMethod 'getUserProfile', "#{BASEURL}user/profile?access_token=#{@accessToken}", "GET"
-
+    @client.registerMethod 'deleteFile', "#{BASEURL}files?access_token=#{@accessToken}&path=${path}", "DELETE"
   loginUrl: ->
     "#{BASEURL}oauth2/authenticate?client_id=#{@id}&redirect_url=#{@redirectUrl}"
 
@@ -78,12 +128,24 @@ class BitcasaClient
         return
       if data.error
         cb data.error
+      else
+        cb(null, data)
     req.on 'error', (err) ->
       cb err
 
-  # callback should take 3 parameters:
-  #   a buffer, where to start and where to end.
-  #   the buffer is where the data is located
+  ###
+  #
+  # download file from bitcasa
+  # parameters:
+  #   client: self, needs to be passed again since we are using fibers
+  #   path: the bitcasa path
+  #   name: name of the file
+  #   start: byte position of where to start downloading
+  #   end: byte position of where to end downloading. end is inclusive
+  #   maxSize: size of the file
+  #   recurse: this should be renamed. recurse is currently used to determine whether the filesystem needs this file, or if it's a read ahead call
+  #
+  ###
   download: (client, path, name, start,end,maxSize, recurse, cb ) ->
     #round the amount of bytes to be downloaded to multiple chunks
     chunkStart = Math.floor((start)/client.chunkSize) * client.chunkSize
@@ -209,6 +271,282 @@ class BitcasaClient
 
 
     ).run()
+
+  upload: (client, parentPath, file, cb) ->
+    url="#{BASEURL}files#{parentPath}/?access_token=#{client.accessToken}"
+    Fiber( ->
+      stat = stats(file)
+      mime = detectFile(file)
+
+      rest.post url ,
+        multipart: true,
+        data:
+          file:  rest.file( file, null, stat.wait().size, null, mime.wait())
+          exists: 'overwrite'
+
+      .on 'complete', (result) ->
+        if result instanceof Error
+          cb result
+        else
+          if result.error
+            cb result.error
+          else
+            cb null, result.result.items[0]
+    ).run()
+
+  loadFolderTree: (getAll=true)->
+    client = @
+    jsonFile =  "#{client.cacheLocation}/data/folderTree.json"
+    if fs.existsSync(jsonFile)
+      fs.readJson jsonFile, (err, data) ->
+        for key in Object.keys(data)
+          o = data[key]
+
+          #get real path of parent
+          parent = client.bitcasaTree.get(pth.dirname(o.path))
+          realPath = pth.join(parent,o.name)
+
+          #add child to parent folder
+          parentFolder = client.folderTree.get parent
+
+          if o.name not in parentFolder.children
+            parentFolder.children.push o.name
+
+          if o.size
+            client.folderTree.set key, new BitcasaFile(client, o.path, o.name, o.size, new Date(o.ctime), new Date(o.mtime) )
+          else
+            # keep track of the conversion of bitcasa path to real path
+            client.bitcasaTree.set o.path, realPath
+            client.folderTree.set key, new BitcasaFolder(client, o.path, o.name, new Date(o.ctime), new Date( o.mtime), [])
+        if getAll
+          client.getAllFolders()
+    else
+      if getAll
+        client.getAllFolders()
+
+  saveFolderTree: ->
+    client = @
+    toSave = {}
+    client.folderTree.forEach (value, key) ->
+      toSave[key] =
+        name: value.name
+        mtime: value.mtime.getTime()
+        ctime: value.ctime.getTime()
+        path: value.bitcasaPath
+
+      if value instanceof BitcasaFile
+        toSave[key].size = value.size
+    fs.outputJson "#{client.cacheLocation}/data/folderTree.json", toSave, ->
+      fn = ->
+        client.getAllFolders()
+      setTimeout fn, 60000
+
+  #this function will udpate all the folders content
+  getAllFolders: ->
+    folders = [] #folders to scan
+    parseLater = [] #sometimes, certain scans will fail, because the parent failed. add these later
+    client = @
+    newKeys = []
+
+    # get folders that should be
+    client.folderTree.forEach (value, key) ->
+      if value instanceof BitcasaFolder
+        try
+          length = value.bitcasaPath.match(/\//g).length
+          if length  % 2 == 1
+            folders.push value
+          if length == 1 and value.name != '' #if not root, but "/Bitcasa Infinite Drive" for example
+            folders.pop()
+        catch error
+          client.logger.log "error", "there was an error listing folder #{key}: #{value} -- #{error}"
+    Fiber( ->
+      fiber = Fiber.current
+      fiberRun = ->
+        fiber.run()
+      start = new Date()
+
+      while folders.length > 0
+        processing = []
+        client.logger.log  "silly", "folders length = #{folders.length}, processing length: #{processing.length}"
+        tokens = Math.min(Math.floor(client.rateLimit.getTokensRemaining()/6), folders.length - processing.length)
+        if tokens < 30
+          setTimeout fiberRun, 30000
+          Fiber.yield()
+          continue
+        for i in [0...tokens]
+          if not client.rateLimit.tryRemoveTokens(1)
+            setTimeout fiberRun, 1000
+            Fiber.yield()
+          depth = 2
+          processing.push getFolder(client, folders[i].bitcasaPath,depth )
+        wait(processing)
+        for i in [0...processing.length]
+          client.logger.log "silly", "proccessing[#{i}] out of #{processing.length}"
+          processingError = false
+          try #catch socket connection error
+            data = processing[i].wait()
+          catch error
+            client.logger.log("error", "there was a problem with connection for folder #{folders[i].name} - #{error}")
+            processingError = true
+            folders.push(folders[i])
+          finally
+            if processingError
+              continue
+
+
+          try
+            result = JSON.parse(data)
+          catch error
+            folders.push(folders[i])
+            client.logger.log "error", "there was a problem processing i=#{i}(#{folders[i].name}) - #{error} - folders length - #{folders.length} - data"
+            client.logger.log "debug", "the bad data was: #{data}"
+            processingError = true
+          finally
+            if processingError
+              continue
+
+          if result.error
+            breakLoop = false
+            switch result.error.code
+              when 2002 #folder does not exist
+                parent = client.bitcasaTree.get(pth.dirname(o.path))
+                realPath = pth.join(parent,folders[i].name)
+                client.folderTree.delete(realPath)
+              when 9006
+                client.logger.log "debug", "api rate limit reached while getting folders"
+                setTimeout fiberRun, 61000
+                Fiber.yield()
+                for j in [i...processing.length]
+                  folders.push(folders[j])
+                breakLoop = true
+              else
+                client.logger.log "error", "there was an error getting folder: #{result.error.code} - #{result.error.message}"
+
+            if breakLoop
+              break
+            continue
+
+          for o in result.result.items
+            #get real path of parent
+            parent = client.bitcasaTree.get(pth.dirname(o.path))
+
+            #if the parent does not exist yet, parse later
+            if parent == undefined
+              parseLater.push o
+              continue
+
+            realPath = pth.join(parent,o.name)
+            newKeys.push realPath
+            #add child to parent folder
+            parentFolder = client.folderTree.get parent
+
+            #if parent is undefined, parse later. sometimes, parent errored out while scanning.
+            if parentFolder == undefined
+              parseLater.push o
+              continue
+
+            if o.name not in parentFolder.children
+              parentFolder.children.push o.name
+
+            if o.category == 'folders'
+              # keep track of the conversion of bitcasa path to real path
+              client.bitcasaTree.set o.path, realPath
+              existingFolder = client.folderTree.get(realPath)
+              children = []
+              if existingFolder != undefined
+                children = existingFolder.children
+              client.folderTree.set( realPath, new BitcasaFolder(client, o.path, o.name, new Date(o.ctime), new Date(o.mtime), children) )
+            else
+              client.folderTree.set realPath,    new BitcasaFile(client, o.path, o.name,o.size,  new Date(o.ctime), new Date(o.mtime))
+        folders.splice 0, processing.length
+        client.logger.log "debug", "folders length after splicing: #{folders.length}"
+      client.logger.log "debug", "it took #{Math.ceil( ((new Date())-start)/60000)} minutes to update folders"
+      keys = BitcasaFolder.parseItems client, parseLater
+      newKeys = newKeys.concat keys
+      client.folderTree.forEach (value,key) ->
+        idx = newKeys.indexOf key
+        if idx < 0
+          client.folderTree.delete key
+          folder = client.folderTree.get pth.dirname(key)
+          if folder #it may have already been removed since it's being removed out of order
+            folder.children.splice (folder.children.indexOf pth.basename(key)), 1
+        else
+          newKeys.splice idx, 1
+      client.saveFolderTree()
+
+    ).run()
+
+  deleteFile: (path,cb) ->
+
+    #@client.registerMethod 'deleteFolders', "#{BASEURL}folders?access_token=#{@accessToken}&path=${path}", "DELETE"
+    rest.del "#{BASEURL}files?access_token=#{@accessToken}", {data:{path: path}}
+    .on 'complete', (result) ->
+      if result instanceof Error
+        cb(result)
+      else
+        if result.error
+          cb result.error
+        else
+          cb null, result
+    # args =
+    #   path:
+    #     path: path
+    #
+    # req = @client.methods.deleteFile args, (data, response)->
+    #   try
+    #     data = JSON.parse(data)
+    #   catch error
+    #     console.log "delete file error", error
+    #     console.log data
+    #     return cb(new Error "data was likely not json")
+    #
+    #   res =
+    #     data:data
+    #     response: response
+    #   console.log "log data for delete file" , data
+    #   if data.error
+    #     cb data.error
+    #   else
+    #     cb null, res
+    # req.on 'error', (err)->
+    #   cb err
+
+  createFolder: (path, name, cb) ->
+    client = @
+    url="#{BASEURL}folders/#{path}/?access_token=#{client.accessToken}"
+    Fiber( ->
+      rest.post url ,
+        data:
+          folder_name: name
+          exists: 'overwrite'
+
+      .on 'complete', (result) ->
+        if result instanceof Error
+          cb result
+        else
+          if result.error
+            cb result.error
+          else
+            cb null, result.result.items[0]
+    ).run()
+
+  deleteFolder: (path, cb) ->
+    rest.del "#{BASEURL}folders?access_token=#{@accessToken}", {data:{path: path}}
+    .on 'complete', (result) ->
+      if result instanceof Error
+        cb(result)
+      else
+        if result.error
+          cb result.error
+        else
+          # client.bitcasaTree.set o.path, realPath
+          # client.folderTree.set realPath, new BitcasaFolder client, o.path, o.name, o.ctime, o.mtime, []
+          cb null, result
+
+
+
+
+
 Object.defineProperties(BitcasaClient.prototype, memoizeMethods({
   getFolders: d( (path,cb)->
     client = @
