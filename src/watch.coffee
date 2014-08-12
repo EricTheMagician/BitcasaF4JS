@@ -52,7 +52,7 @@ watcher = fs.watch location, (event, filename) ->
       try
         #upload file sizes
         files = readdir(uploadLocation).wait()
-        stats = (statfs(pth.join(location,file)) for file in files)
+        stats = (statfs(pth.join(uploadLocation,file)) for file in files)
         sizes = (stat.size for stat in stats)
         if sizes.length == 0
           totalUploadSize = 0
@@ -61,7 +61,7 @@ watcher = fs.watch location, (event, filename) ->
 
         #download file sizes
         files = readdir(downloadLocation).wait()
-        stats = (statfs(pth.join(location,file)) for file in files)
+        stats = (statfs(pth.join(downloadLocation,file)) for file in files)
         sizes = (stat.size for stat in stats)
         if sizes.length == 0
           totalDownloadSize = 0
