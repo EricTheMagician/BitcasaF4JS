@@ -61,6 +61,9 @@ describe 'BitcasaClient', ->
           return
         folder2 = client.folderTree.get("/Bitcasa Infinite Drive/BitcasaF4JS")
         expect( folder2 ).to.exist
+
+        folder = client.folderTree.get("/Bitcasa Infinite Drive")
+        expect( folder.children ).to.contain("BitcasaF4JS")
         done()
       folder.createFolder 'BitcasaF4JS', callback
 
@@ -149,6 +152,8 @@ describe 'BitcasaClient', ->
         if err
           done(err)
         else
+          folder = client.folderTree.get('/Bitcasa Infinite Drive/BitcasaF4JS')
+          expect(folder.children).to.not.contain "BitcasaF4JS"
           done()
       folder = client.folderTree.get('/Bitcasa Infinite Drive/BitcasaF4JS')
       folder.delete callback

@@ -95,6 +95,7 @@ class BitcasaFolder
         newPath = "#{client.bitcasaTree.get(folder.bitcasaPath)}/#{name}"
         client.folderTree.set newPath, new BitcasaFolder(client, args.path, args.name, new Date( args.ctime), new Date( args.mtime) , [])
         client.bitcasaTree.set args.path, newPath
+        folder.children.push name
         cb null, args
     client.createFolder(@bitcasaPath,name, callback)
 
@@ -107,6 +108,11 @@ class BitcasaFolder
       realPath = client.bitcasaTree.get folder.bitcasaPath
       client.bitcasaTree.delete folder.bitcasaPath
       client.folderTree.delete realPath
+
+      parentFolder = client.folderTree.get pth.dirname realPath
+      idx = parentFolder.indexOf folder.name
+      parentFolder.splice idx, 1
+
       cb null, true
     if @children.length == 0
       client.deleteFolder(@bitcasaPath, callback)
