@@ -191,6 +191,20 @@ mkdir = (path, mode, cb) ->
   else
     cb -errnoMap.ENOENT
 
+rmdir = (path, cb) ->
+  folder = client.folderTree.get path
+  if folder
+    if folder instanceof BitcasaFolder
+      callback = (err, args) ->
+        if err
+          cb -errnoMap.EPERM
+        else
+          cb 0
+      folder.delete callback
+    else
+      cb -errnoMap.ENOTDIR
+  else
+    cb -errnoMap.ENOENT
 
 destroy = (cb) ->
   return cb(0)
@@ -211,7 +225,7 @@ handlers =
   unlink: unlink,
   # rename: rename,
   mkdir: mkdir,
-  # rmdir: rmdir,
+  rmdir: rmdir,
   # init: init,
   destroy: destroy
 
