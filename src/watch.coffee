@@ -9,6 +9,7 @@ wait = Future.wait
 
 location = config.cacheLocation
 downloadLocation = pth.join(config.cacheLocation, "download")
+uploadLocation = pth.join(config.cacheLocation, "upload")
 maxCache = config.maxCacheSize  * 1024 * 1024
 
 logger = new (winston.Logger)({
@@ -49,14 +50,23 @@ watcher = fs.watch location, (event, filename) ->
     locked = true
     Fiber( ()->
       try
-        files = readdir(location).wait()
+        #upload file sizes
+        files = readdir(uploadLocation).wait()
         stats = (statfs(pth.join(location,file)) for file in files)
         sizes = (stat.size for stat in stats)
-        totalSize = sizes.reduce (x,y) -> x + y
-        if totalSize > maxCache
-          files = readdir(downloadLocation).wait()
-          all = zip(files,stats)
+        totalUploadSize = sizes.reduce (x,y) -> x + y
 
+        #download file sizes
+        files = readdir(downloadLocation).wait()
+        stats = (statfs(pth.join(location,file)) for file in files)
+        sizes = (stat.size for stat in stats)
+        totalDownloadSize = sizes.reduce (x,y) -> x + y
+
+        totalSize = totalUploadSize + totalDownloadSize
+
+        if totalSize > maxCache
+          #assume that files and stats are from the download directory
+          all = zip(files,stats)
           all.sort(sortStats)
 
 
@@ -64,7 +74,7 @@ watcher = fs.watch location, (event, filename) ->
             if totalSize < maxCache
               break
             totalSize -= info[1].size
-            unlink(pth.join(location,info[0])).wait()
+            unlink(pth.join(downloadLocation,info[0])).wait()
       catch error
         logger.log("debug", "Watcher: there was a problem: #{error}")
       locked = false
