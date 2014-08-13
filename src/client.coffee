@@ -461,16 +461,18 @@ class BitcasaClient
         client.logger.log "debug", "folders length after splicing: #{folders.length}"
       client.logger.log "debug", "it took #{Math.ceil( ((new Date())-start)/60000)} minutes to update folders"
       keys = BitcasaFolder.parseItems client, parseLater
+      client.logger.log "debug", "keys.length #{keys.length} -- newKeys.length #{keys.length}"
       newKeys = newKeys.concat keys
-      # client.folderTree.forEach (value,key) ->
-      #   idx = newKeys.indexOf key
-      #   if idx < 0
-      #     client.folderTree.delete key
-      #     folder = client.folderTree.get pth.dirname(key) #get parent folder
-      #     if folder #it may have already been removed since it's being removed out of order
-      #       folder.children.splice (folder.children.indexOf pth.basename(key)), 1
-      #   else
-      #     newKeys.splice idx, 1
+      client.logger.log "debug", "keys.length #{keys.length} -- newKeys.length #{keys.length}"
+      client.folderTree.forEach (value,key) ->
+        idx = newKeys.indexOf key
+        if idx < 0
+          client.folderTree.delete key
+          folder = client.folderTree.get pth.dirname(key) #get parent folder
+          if folder #it may have already been removed since it's being removed out of order
+            folder.children.splice (folder.children.indexOf pth.basename(key)), 1
+        else
+          newKeys.splice idx, 1
       client.saveFolderTree()
 
     ).run()
