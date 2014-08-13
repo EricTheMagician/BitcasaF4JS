@@ -110,7 +110,7 @@ class BitcasaFile
           return
         data1.buffer.copy(buffer,0,data1.start, data1.end)
 
-        if data == null or data2.buffer.length == 0
+        if data2 == null or data2.buffer.length == 0
           cb( buffer, 0, data1.buffer.length )
           return
         data2.buffer.copy(buffer,data1.end - data1.start, data2.start, data2.end)
