@@ -59,7 +59,13 @@ class BitcasaFile
         if (chunkEnd - chunkStart) / client.chunkSize <= 1
           BitcasaFile.recursive(client,file, Math.floor(file.size / client.chunkSize) * client.chunkSize, file.size)
         BitcasaFile.recursive(client,file, chunkStart + i * client.chunkSize, chunkEnd + i * client.chunkSize) for i in [1..client.advancedChunks]
-        data = data.wait()
+        try
+          data = data.wait()
+        catch error #there might have been a connection error
+          data = null
+        if data == null
+          cb new Buffer(0), 0,0
+          return
         client.downloadTree.delete("#{file.bitcasaBasename}-#{chunkStart}")
         cb( data.buffer, data.start, data.end )
         client.logger.log "silly", "after downloading - #{data.buffer.length} - #{data.start} - #{data.end}"
@@ -87,19 +93,24 @@ class BitcasaFile
         data2 = download(client, file.bitcasaPath, file.name, start2, end,file.size, true)
         client.downloadTree.set("#{file.bitcasaBasename}-#{chunkStart+client.chunkSize}", 1)
 
-        data1 = data1.wait()
+        try #check that data1 does not have any connection error
+          data1 = data1.wait()
+        catch error
+          data1 = null
         client.downloadTree.delete("#{file.bitcasaBasename}-#{chunkStart}")
-        data2 = data2.wait()
+
+        try #check that data1 does not have any connection error
+          data2 = data2.wait()
+        catch
+          data2 = null
         client.downloadTree.delete("#{file.bitcasaBasename}-#{chunkStart+client.chunkSize}", 1)
 
-        if data1.buffer.length == 0
+        if data1 == null or data1.buffer.length == 0
           cb( buffer, 0, 0)
           return
-
         data1.buffer.copy(buffer,0,data1.start, data1.end)
 
-
-        if data2.buffer.length == 0
+        if data == null or data2.buffer.length == 0
           cb( buffer, 0, data1.buffer.length )
           return
         data2.buffer.copy(buffer,data1.end - data1.start, data2.start, data2.end)
