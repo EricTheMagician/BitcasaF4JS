@@ -122,14 +122,15 @@ class BitcasaClient
     req = @client.methods.getUserProfile  (data, response) ->
       try
         data = JSON.parse(data)
+        if data.error
+          cb data.error
+        else
+          cb(null, data)
       catch error
         client.logger.log "debug", "when parsing validation, data was not json"
         cb error
-        return
-      if data.error
-        cb data.error
-      else
-        cb(null, data)
+
+
     req.on 'error', (err) ->
       cb err
 
@@ -369,7 +370,7 @@ class BitcasaClient
         processing = []
         client.logger.log  "silly", "folders length = #{folders.length}, processing length: #{processing.length}"
         tokens = Math.min(Math.floor(client.rateLimit.getTokensRemaining()/6), folders.length - processing.length)
-        if tokens < 30
+        if client.rateLimit.getTokensRemaining() < 30
           setTimeout fiberRun, 30000
           Fiber.yield()
           continue
