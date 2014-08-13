@@ -214,6 +214,7 @@ class BitcasaClient
 
           if not res
             cb null, failedArguments
+            return
 
           data = res.data
           response = res.response
