@@ -390,9 +390,8 @@ class BitcasaClient
             client.logger.log("error", "there was a problem with connection for folder #{folders[i].name} - #{error}")
             processingError = true
             folders.push(folders[i])
-          finally
-            if processingError
-              continue
+          if processingError
+            continue
 
 
           try
@@ -402,9 +401,8 @@ class BitcasaClient
             client.logger.log "error", "there was a problem processing i=#{i}(#{folders[i].name}) - #{error} - folders length - #{folders.length} - data"
             client.logger.log "debug", "the bad data was: #{data}"
             processingError = true
-          finally
-            if processingError
-              continue
+          if processingError
+            continue
 
           if result.error
             breakLoop = false
@@ -464,15 +462,15 @@ class BitcasaClient
       client.logger.log "debug", "it took #{Math.ceil( ((new Date())-start)/60000)} minutes to update folders"
       keys = BitcasaFolder.parseItems client, parseLater
       newKeys = newKeys.concat keys
-      client.folderTree.forEach (value,key) ->
-        idx = newKeys.indexOf key
-        if idx < 0
-          client.folderTree.delete key
-          folder = client.folderTree.get pth.dirname(key)
-          if folder #it may have already been removed since it's being removed out of order
-            folder.children.splice (folder.children.indexOf pth.basename(key)), 1
-        else
-          newKeys.splice idx, 1
+      # client.folderTree.forEach (value,key) ->
+      #   idx = newKeys.indexOf key
+      #   if idx < 0
+      #     client.folderTree.delete key
+      #     folder = client.folderTree.get pth.dirname(key) #get parent folder
+      #     if folder #it may have already been removed since it's being removed out of order
+      #       folder.children.splice (folder.children.indexOf pth.basename(key)), 1
+      #   else
+      #     newKeys.splice idx, 1
       client.saveFolderTree()
 
     ).run()
