@@ -39,7 +39,7 @@ class BitcasaFile
     file = @
     client = @client
     chunkStart = Math.floor((start)/client.chunkSize) * client.chunkSize
-    end = Math.min(end, file.size )
+    end = Math.min(end, file.size-1 )
     chunkEnd = Math.min( Math.ceil(end/client.chunkSize) * client.chunkSize, file.size)-1 #and make sure that it's not bigger than the actual file
     nChunks = (chunkEnd - chunkStart)/client.chunkSize
     download = Future.wrap(client.download)
@@ -71,9 +71,9 @@ class BitcasaFile
         client.logger.log "silly", "after downloading - #{data.buffer.length} - #{data.start} - #{data.end}"
       ).run()
     else if nChunks < 2
-      buffer = new Buffer(end-start + 1)
       end1 = chunkStart + client.chunkSize - 1
       start2 = chunkStart + client.chunkSize
+
       Fiber( ->
         fiber = Fiber.current
         while client.downloadTree.has("#{file.bitcasaBasename}-#{chunkStart}")
@@ -106,15 +106,16 @@ class BitcasaFile
         client.downloadTree.delete("#{file.bitcasaBasename}-#{chunkStart+client.chunkSize}", 1)
 
         if data1 == null or data1.buffer.length == 0
-          cb( buffer, 0, 0)
+          cb( new Buffer(0), 0, 0)
           return
-        data1.buffer.copy(buffer,0,data1.start, data1.end)
+        buffer1 = data1.buffer.slice(dat1.buffer1,data1.start, data1.end)
 
         if data2 == null or data2.buffer.length == 0
-          cb( buffer, 0, data1.buffer.length )
+          cb( new Buffer(0), 0, data1.buffer.length )
           return
-        data2.buffer.copy(buffer,data1.end - data1.start, data2.start, data2.end)
+        buffer2 = data2.buffer.slice(data2.start, data2.end)
 
+        buffer = Buffer.concat([buffer1, buffer2])
         cb( buffer, 0, buffer.length )
         return
       ).run()
