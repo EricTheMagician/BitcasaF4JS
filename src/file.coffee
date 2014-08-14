@@ -108,7 +108,7 @@ class BitcasaFile
         if data1 == null or data1.buffer.length == 0
           cb( new Buffer(0), 0, 0)
           return
-        buffer1 = data1.buffer.slice(data1.buffer1,data1.start, data1.end)
+        buffer1 = data1.buffer.slice(data1.start, data1.end)
 
         if data2 == null or data2.buffer.length == 0
           cb( new Buffer(0), 0, data1.buffer.length )
