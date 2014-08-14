@@ -65,7 +65,7 @@ _getFolder = (client, path, depth, cb) ->
   callback = ->
     if not returned
       returned = true
-      cb("taking to long to getFolder")
+      cb("taking too long to getFolder")
   timeout = setTimeout callback, 300000
 
   req = client.client.methods.getFolder args, (data, response) ->
@@ -79,6 +79,7 @@ _getFolder = (client, path, depth, cb) ->
       returned = true
       clearTimeout timeout
       cb(err)
+
 
 getFolder = Future.wrap(_getFolder)
 
@@ -199,13 +200,20 @@ class BitcasaClient
               Range: "bytes=#{chunkStart}-#{chunkEnd}"
           client.logger.log "debug", "starting to download #{location}"
           _download = (_cb) ->
+            #ensure callback is only fired once.
+            cbCalled = false
             req = client.client.methods.downloadChunk args, (data, response)->
-              res = {data:data, response: response}
-              _cb(null, res)
+              if not cbCalled
+                cbCalled = true
+                res = {data:data, response: response}
+                _cb(null, res)
 
             req.on 'error', (err) ->
-              client.logger.log("error","there was an error downloading: #{err}")
-              _cb(err)
+              if not cbCalled
+                cbCalled = true
+                client.logger.log("error","there was an error downloading: #{err}")
+                _cb(err)
+                
           download = Future.wrap(_download)
           try
             res = download().wait()
