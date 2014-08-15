@@ -206,7 +206,7 @@ class BitcasaClient
             req = client.client.methods.downloadChunk args, (data, response)->
               if not cbCalled
                 cbCalled = true
-                res = {data:data, response: response}
+                res = {data:data, response: response, error: null}
                 _cb(null, res)
 
             req.on 'error', (err) ->
