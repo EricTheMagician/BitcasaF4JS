@@ -193,7 +193,8 @@ class BitcasaClient
         if client.rateLimit.tryRemoveTokens(1)
           client.logger.log "debug", "download requests: #{client.rateLimit.getTokensRemaining()}"
           args =
-            timeout: 120000
+            timeout: 360000
+
             "path":
               "path": path
             headers:
@@ -212,15 +213,13 @@ class BitcasaClient
               if not cbCalled
                 cbCalled = true
                 client.logger.log("error","there was an error downloading: #{err}")
-                _cb(err)
+                _cb(null, {error: "failed downloading"})
 
           download = Future.wrap(_download)
-          try
-            res = download().wait()
-          catch error
-            cb(error,failedArguments)
+          res = download().wait()
 
-          if not res
+          if res.error
+            cb(error,failedArguments)
             return
 
           data = res.data
