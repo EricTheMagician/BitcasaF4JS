@@ -213,7 +213,7 @@ class BitcasaClient
                 cbCalled = true
                 client.logger.log("error","there was an error downloading: #{err}")
                 _cb(err)
-                
+
           download = Future.wrap(_download)
           try
             res = download().wait()
@@ -221,7 +221,6 @@ class BitcasaClient
             cb(error,failedArguments)
 
           if not res
-            cb null, failedArguments
             return
 
           data = res.data
