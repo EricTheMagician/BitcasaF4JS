@@ -219,7 +219,7 @@ class BitcasaClient
           res = download().wait()
 
           if res.error
-            cb(error,failedArguments)
+            cb(null,failedArguments)
             return
 
           data = res.data
