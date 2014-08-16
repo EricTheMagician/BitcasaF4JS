@@ -479,11 +479,11 @@ class BitcasaClient
         Fiber ->
           counter++
           #slow it down so other things can do it's job.
-          if counter % 5000 == 0
+          if counter % 5 == 0
             fiber = Fiber.current
             fn = ->
               fiber.run()
-              setTimeout fn, 1000
+            process.nextTick fn
             Fiber.yield()
           idx = newKeys.indexOf key
           if idx < 0
