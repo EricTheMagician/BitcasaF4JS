@@ -9,6 +9,7 @@ d = require('d');
 Future = require('fibers/future')
 Fiber = require 'fibers'
 wait = Future.wait
+RedBlackTree = require('data-structures').RedBlackTree
 
 #for mocha testing
 if Object.keys( module.exports ).length == 0
@@ -350,10 +351,11 @@ class BitcasaClient
       setTimeout fn, 60000
 
   #this function will udpate all the folders content
+
   getAllFolders: ->
     parseLater = [] #sometimes, certain scans will fail, because the parent failed. add these later
     client = @
-    newKeys = ['/']
+    newKeys = new RedBlackTree ['/']
     folders = [client.folderTree.get('/')]
     foldersNextDepth = []
     depth = 1
@@ -433,7 +435,7 @@ class BitcasaClient
               continue
 
             realPath = pth.join(parent,o.name)
-            newKeys.push realPath
+            newKeys.add realPath
             #add child to parent folder
             parentFolder = client.folderTree.get parent
 
@@ -465,7 +467,7 @@ class BitcasaClient
         console.log "length of folders after splicing: #{folders.length}"
         if folders.length == 0 and foldersNextDepth.length > 0
           keys = BitcasaFolder.parseItems client, parseLater
-          newKeys = newKeys.concat keys
+          newKeys.add(key) for key in keys
           folders = foldersNextDepth
           oldDepth = depth + 1
           depth = foldersNextDepth[0].bitcasaPath.match(/\//g).length
@@ -474,28 +476,26 @@ class BitcasaClient
 
       client.logger.log "debug", "it took #{Math.ceil( ((new Date())-start)/60000)} minutes to update folders"
       console.log "folderTree Size Before: #{client.folderTree.size}"
+      oldKeys = new Array client.folderTree.size
       counter = 0
       client.folderTree.forEach (value,key) ->
-        Fiber ->
-          counter++
-          #slow it down so other things can do it's job.
-          if counter % 5 == 0
-            fiber = Fiber.current
-            fn = ->
-              fiber.run()
-            process.nextTick fn
-            Fiber.yield()
-          idx = newKeys.indexOf key
-          if idx < 0
-            client.folderTree.delete key
-            folder = client.folderTree.get pth.dirname(key) #get parent folder
-            if folder #it may have already been removed since it's being removed out of order
-              idx = (folder.children.indexOf pth.basename(key))
-              if idx >= 0
-                folder.children.splice idx, 1
-          else
-            newKeys.splice idx, 1
-        .run()
+        oldKeys[counter] = key
+        counter++
+
+      #pause for a little after getting all keys
+      process.nextTick fiberRun
+      Fiber.yield()
+
+      counter = 0
+      for key in oldKeys
+        counter++
+        if newKeys.remove(key) == undefined
+          client.folderTree.delete key
+        if counter % 100 == 0
+          process.nextTick fiberRun
+          Fiber.yield()
+
+
       console.log "folderTree Size After: #{client.folderTree.size}"
 
       client.saveFolderTree()
