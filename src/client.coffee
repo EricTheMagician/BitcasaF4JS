@@ -457,6 +457,10 @@ class BitcasaClient
                 foldersNextDepth.push client.folderTree.get( realPath)
             else
               client.folderTree.set realPath,    new BitcasaFile(client, o.path, o.name,o.size,  new Date(o.ctime), new Date(o.mtime))
+
+          if result.result.items.length >= 5000
+            setTimeout fiberRun, Math.ceil(result.result.items.length/5000)
+            Fiber.yield()
         folders.splice 0, processing.length
         console.log "length of folders after splicing: #{folders.length}"
         if folders.length == 0 and foldersNextDepth.length > 0
@@ -470,17 +474,28 @@ class BitcasaClient
 
       client.logger.log "debug", "it took #{Math.ceil( ((new Date())-start)/60000)} minutes to update folders"
       console.log "folderTree Size Before: #{client.folderTree.size}"
+      counter = 0
       client.folderTree.forEach (value,key) ->
-        idx = newKeys.indexOf key
-        if idx < 0
-          client.folderTree.delete key
-          folder = client.folderTree.get pth.dirname(key) #get parent folder
-          if folder #it may have already been removed since it's being removed out of order
-            idx = (folder.children.indexOf pth.basename(key))
-            if idx >= 0
-              folder.children.splice idx, 1
-        else
-          newKeys.splice idx, 1
+        Fiber ->
+          counter++
+          #slow it down so other things can do it's job.
+          if counter % 5000 == 0
+            fiber = Fiber.current
+            fn = ->
+              fiber.run()
+              setTimeout fn, 1000
+            Fiber.yield()
+          idx = newKeys.indexOf key
+          if idx < 0
+            client.folderTree.delete key
+            folder = client.folderTree.get pth.dirname(key) #get parent folder
+            if folder #it may have already been removed since it's being removed out of order
+              idx = (folder.children.indexOf pth.basename(key))
+              if idx >= 0
+                folder.children.splice idx, 1
+          else
+            newKeys.splice idx, 1
+        .run()
       console.log "folderTree Size After: #{client.folderTree.size}"
 
       client.saveFolderTree()
