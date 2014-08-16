@@ -9,6 +9,7 @@ d = require('d');
 Future = require('fibers/future')
 Fiber = require 'fibers'
 wait = Future.wait
+RedBlackTree = require('data-structures').RedBlackTree
 
 #for mocha testing
 if Object.keys( module.exports ).length == 0
@@ -350,65 +351,57 @@ class BitcasaClient
       setTimeout fn, 60000
 
   #this function will udpate all the folders content
+
   getAllFolders: ->
-    folders = [] #folders to scan
     parseLater = [] #sometimes, certain scans will fail, because the parent failed. add these later
     client = @
-    newKeys = []
-
-    # get folders that should be
-    client.folderTree.forEach (value, key) ->
-      if value instanceof BitcasaFolder
-        try
-          length = value.bitcasaPath.match(/\//g).length
-          if length  % 2 == 1
-            folders.push value
-          if length == 1 and value.name != '' #if not root, but "/Bitcasa Infinite Drive" for example
-            folders.pop()
-        catch error
-          client.logger.log "error", "there was an error listing folder #{key}: #{value} -- #{error}"
+    newKeys = new RedBlackTree ['/']
+    folders = [client.folderTree.get('/')]
+    foldersNextDepth = []
+    depth = 1
+    oldDepth = 0
     Fiber( ->
       fiber = Fiber.current
       fiberRun = ->
         fiber.run()
       start = new Date()
-
       while folders.length > 0
         processing = []
         client.logger.log  "silly", "folders length = #{folders.length}, processing length: #{processing.length}"
         tokens = Math.min(Math.floor(client.rateLimit.getTokensRemaining()/6), folders.length - processing.length)
         if client.rateLimit.getTokensRemaining() < 30
-          setTimeout fiberRun, 30000
+          process.nextTick fiberRun
           Fiber.yield()
           continue
         for i in [0...tokens]
           if not client.rateLimit.tryRemoveTokens(1)
-            setTimeout fiberRun, 1000
+            process.nextTick fiberRun
             Fiber.yield()
-          depth = 2
           processing.push getFolder(client, folders[i].bitcasaPath,depth )
         wait(processing)
         for i in [0...processing.length]
-          client.logger.log "silly", "proccessing[#{i}] out of #{processing.length}"
+          client.logger.log "silly", "proccessing[#{i}] out of #{processing.length} -- folders length = #{folders.length}"
           processingError = false
           try #catch socket connection error
             data = processing[i].wait()
           catch error
             client.logger.log("error", "there was a problem with connection for folder #{folders[i].name} - #{error}")
             processingError = true
-            folders.push(folders[i])
+
           if processingError
+            folders.push(folders[i])
             continue
 
 
           try
             result = JSON.parse(data)
           catch error
-            folders.push(folders[i])
             client.logger.log "error", "there was a problem processing i=#{i}(#{folders[i].name}) - #{error} - folders length - #{folders.length} - data"
             client.logger.log "debug", "the bad data was: #{data}"
             processingError = true
+
           if processingError
+            folders.push(folders[i])
             continue
 
           if result.error
@@ -442,7 +435,7 @@ class BitcasaClient
               continue
 
             realPath = pth.join(parent,o.name)
-            newKeys.push realPath
+            newKeys.add realPath
             #add child to parent folder
             parentFolder = client.folderTree.get parent
 
@@ -462,22 +455,49 @@ class BitcasaClient
               if existingFolder != undefined
                 children = existingFolder.children
               client.folderTree.set( realPath, new BitcasaFolder(client, o.path, o.name, new Date(o.ctime), new Date(o.mtime), children) )
+              if o.path.match(/\//g).length  == (oldDepth + depth + 1)
+                foldersNextDepth.push client.folderTree.get( realPath)
             else
               client.folderTree.set realPath,    new BitcasaFile(client, o.path, o.name,o.size,  new Date(o.ctime), new Date(o.mtime))
+
+          if result.result.items.length >= 5000
+            process.nextTick fiberRun
+            Fiber.yield()
         folders.splice 0, processing.length
-        client.logger.log "debug", "folders length after splicing: #{folders.length}"
+        console.log "length of folders after splicing: #{folders.length}"
+        if folders.length == 0 and foldersNextDepth.length > 0
+          keys = BitcasaFolder.parseItems client, parseLater
+          newKeys.add(key) for key in keys
+          folders = foldersNextDepth
+          oldDepth = depth + 1
+          depth = foldersNextDepth[0].bitcasaPath.match(/\//g).length
+          console.log "length of folders of nextDepth #{folders.length}"
+          console.log "new depth is #{depth}"
+
       client.logger.log "debug", "it took #{Math.ceil( ((new Date())-start)/60000)} minutes to update folders"
-      keys = BitcasaFolder.parseItems client, parseLater
-      newKeys = newKeys.concat keys
-      # client.folderTree.forEach (value,key) ->
-      #   idx = newKeys.indexOf key
-      #   if idx < 0
-      #     client.folderTree.delete key
-      #     folder = client.folderTree.get pth.dirname(key) #get parent folder
-      #     if folder #it may have already been removed since it's being removed out of order
-      #       folder.children.splice (folder.children.indexOf pth.basename(key)), 1
-      #   else
-      #     newKeys.splice idx, 1
+      console.log "folderTree Size Before: #{client.folderTree.size}"
+      oldKeys = new Array client.folderTree.size
+      counter = 0
+      client.folderTree.forEach (value,key) ->
+        oldKeys[counter] = key
+        counter++
+
+      #pause for a little after getting all keys
+      process.nextTick fiberRun
+      Fiber.yield()
+
+      counter = 0
+      for key in oldKeys
+        counter++
+        if newKeys.remove(key) == undefined
+          client.folderTree.delete key
+        if counter % 100 == 0
+          process.nextTick fiberRun
+          Fiber.yield()
+
+
+      console.log "folderTree Size After: #{client.folderTree.size}"
+
       client.saveFolderTree()
 
     ).run()
