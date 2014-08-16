@@ -364,6 +364,7 @@ class BitcasaClient
       fiber = Fiber.current
       fiberRun = ->
         fiber.run()
+        return null
       start = new Date()
       while folders.length > 0
         processing = []
