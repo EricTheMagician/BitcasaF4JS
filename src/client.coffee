@@ -463,7 +463,6 @@ class BitcasaClient
           keys = BitcasaFolder.parseItems client, parseLater
           newKeys = newKeys.concat keys
           folders = foldersNextDepth
-          console.log(folder.name) for folder in folders
           oldDepth = depth + 1
           depth = foldersNextDepth[0].bitcasaPath.match(/\//g).length
           console.log "length of folders of nextDepth #{folders.length}"
