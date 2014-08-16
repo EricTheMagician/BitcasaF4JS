@@ -368,12 +368,12 @@ class BitcasaClient
         client.logger.log  "silly", "folders length = #{folders.length}, processing length: #{processing.length}"
         tokens = Math.min(Math.floor(client.rateLimit.getTokensRemaining()/6), folders.length - processing.length)
         if client.rateLimit.getTokensRemaining() < 30
-          setTimeout fiberRun, 30000
+          process.nextTick fiberRun
           Fiber.yield()
           continue
         for i in [0...tokens]
           if not client.rateLimit.tryRemoveTokens(1)
-            setTimeout fiberRun, 1000
+            process.nextTick fiberRun
             Fiber.yield()
           processing.push getFolder(client, folders[i].bitcasaPath,depth )
         wait(processing)
@@ -459,7 +459,7 @@ class BitcasaClient
               client.folderTree.set realPath,    new BitcasaFile(client, o.path, o.name,o.size,  new Date(o.ctime), new Date(o.mtime))
 
           if result.result.items.length >= 5000
-            setTimeout fiberRun, Math.ceil(result.result.items.length/5000)
+            process.nextTick fiberRun
             Fiber.yield()
         folders.splice 0, processing.length
         console.log "length of folders after splicing: #{folders.length}"
