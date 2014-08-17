@@ -37,7 +37,7 @@ class BitcasaFolder
     try
       result = JSON.parse(data)
     catch error
-      client.logger.log "error", "there was a problem processing i=#{i}(#{folders[i].name}) - #{error} - folders length - #{folders.length} - data"
+      client.logger.log "error", "there was a problem parsing folder  - #{error} - folders length"
       client.logger.log "debug", "the bad data was: #{data}"
       processingError = true
       cb(error)
@@ -69,7 +69,7 @@ class BitcasaFolder
         continue
 
       realPath = pth.join(parent,o.name)
-      keys.add realPath
+      keys.push realPath
 
       parentFolder = client.folderTree.get parent
       #if parent is undefined, parse later. sometimes, parent errored out while scanning.
@@ -94,7 +94,7 @@ class BitcasaFolder
     _cb = ->
       cb(null, keys)
     process.nextTick _cb
-    
+
     return null
   getAttr: (cb)->
     attr =
