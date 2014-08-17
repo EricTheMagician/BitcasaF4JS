@@ -149,7 +149,7 @@ readdir = (path, cb) ->
       names = object.children
       if names.length == 0
         fn = ->
-          client.getFolders( path )
+          client.getFolders( path, -> )
         setTimeout(fn, 50)
     else
       err = -errnoMap.ENOENT

@@ -353,13 +353,13 @@ class BitcasaClient
   #this function will udpate all the folders content
 
   getAllFolders: ->
-    parseLater = [] #sometimes, certain scans will fail, because the parent failed. add these later
     client = @
     newKeys = new RedBlackTree ['/']
     folders = [client.folderTree.get('/')]
     foldersNextDepth = []
     depth = 1
     oldDepth = 0
+    parseFolder = Future.wrap(BitcasaFolder.parseFolder)
     Fiber( ->
       fiber = Fiber.current
       fiberRun = ->
@@ -395,7 +395,7 @@ class BitcasaClient
 
 
           try
-            result = JSON.parse(data)
+            keys = parseFolder(client,data).wait()
           catch error
             client.logger.log "error", "there was a problem processing i=#{i}(#{folders[i].name}) - #{error} - folders length - #{folders.length} - data"
             client.logger.log "debug", "the bad data was: #{data}"
@@ -405,69 +405,16 @@ class BitcasaClient
             folders.push(folders[i])
             continue
 
-          if result.error
-            breakLoop = false
-            switch result.error.code
-              when 2002 #folder does not exist
-                parent = client.bitcasaTree.get(pth.dirname(o.path))
-                realPath = pth.join(parent,folders[i].name)
-                client.folderTree.delete(realPath)
-              when 9006
-                client.logger.log "debug", "api rate limit reached while getting folders"
-                setTimeout fiberRun, 61000
-                Fiber.yield()
-                for j in [i...processing.length]
-                  folders.push(folders[j])
-                breakLoop = true
-              else
-                client.logger.log "error", "there was an error getting folder: #{result.error.code} - #{result.error.message}"
+          for key in keys
+            newKeys.add key
+            if key.match(/\//g).length  == (oldDepth + depth + 1)
+              o = client.folderTree.get key
+              if o instanceof BitcasaFolder
+                foldersNextDepth.push o
 
-            if breakLoop
-              break
-            continue
-
-          for o in result.result.items
-            #get real path of parent
-            parent = client.bitcasaTree.get(pth.dirname(o.path))
-
-            #if the parent does not exist yet, parse later
-            if parent == undefined
-              parseLater.push o
-              continue
-
-            realPath = pth.join(parent,o.name)
-            newKeys.add realPath
-            #add child to parent folder
-            parentFolder = client.folderTree.get parent
-
-            #if parent is undefined, parse later. sometimes, parent errored out while scanning.
-            if parentFolder == undefined
-              parseLater.push o
-              continue
-
-            if o.name not in parentFolder.children
-              parentFolder.children.push o.name
-
-            if o.category == 'folders'
-              # keep track of the conversion of bitcasa path to real path
-              client.bitcasaTree.set o.path, realPath
-              existingFolder = client.folderTree.get(realPath)
-              children = []
-              if existingFolder != undefined
-                children = existingFolder.children
-              client.folderTree.set( realPath, new BitcasaFolder(client, o.path, o.name, new Date(o.ctime), new Date(o.mtime), children) )
-              if o.path.match(/\//g).length  == (oldDepth + depth + 1)
-                foldersNextDepth.push client.folderTree.get( realPath)
-            else
-              client.folderTree.set realPath,    new BitcasaFile(client, o.path, o.name,o.size,  new Date(o.ctime), new Date(o.mtime))
-
-          if result.result.items.length >= 5000
-            process.nextTick fiberRun
-            Fiber.yield()
         folders.splice 0, processing.length
         console.log "length of folders after splicing: #{folders.length}"
         if folders.length == 0 and foldersNextDepth.length > 0
-          keys = BitcasaFolder.parseItems client, parseLater
           newKeys.add(key) for key in keys
           folders = foldersNextDepth
           oldDepth = depth + 1
@@ -583,7 +530,7 @@ Object.defineProperties(BitcasaClient.prototype, memoizeMethods({
       client.logger.log "silly", "requests: #{client.rateLimit.getTokensRemaining()}"
       if @rateLimit.tryRemoveTokens(1)
         callback = (data,response) ->
-          BitcasaFolder.parseFolder(data,response, client, cb)
+          BitcasaFolder.parseFolder( client, data, cb)
           return null
         depth = 1
         client.logger.log("debug", "getting folder info from bitcasa for #{path} -- depth #{depth}")
