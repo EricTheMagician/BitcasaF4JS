@@ -580,18 +580,17 @@ Object.defineProperties(BitcasaClient.prototype, memoizeMethods({
     client = @
     object = client.folderTree.get(path)
     if object instanceof BitcasaFolder
-      console.log "requests: #{client.rateLimit.getTokensRemaining()}"
+      client.logger.log "silly", "requests: #{client.rateLimit.getTokensRemaining()}"
       if @rateLimit.tryRemoveTokens(1)
         callback = (data,response) ->
-          BitcasaFolder.parseFolder(data,response, client,null, cb)
-        depth = 3
-        if path == "/"
-          depth = 1
+          BitcasaFolder.parseFolder(data,response, client, cb)
+          return null
+        depth = 1
         client.logger.log("debug", "getting folder info from bitcasa for #{path} -- depth #{depth}")
         url = "#{BASEURL}/folders#{object.bitcasaPath}?access_token=#{client.accessToken}&depth=#{depth}"
         client.client.get(url, callback)
       else
-        client.logger.log("remaining requests too low: #{client.rateLimit.getTokensRemaining()}" )
+        client.logger.log "debug", "remaining requests too low: #{client.rateLimit.getTokensRemaining()}"
 
   , { maxAge: 120000, length: 1 })
 }));
