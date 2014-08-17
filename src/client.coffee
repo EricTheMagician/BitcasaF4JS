@@ -492,7 +492,7 @@ class BitcasaClient
         counter++
         if newKeys.remove(key) == undefined
           client.folderTree.delete key
-        if counter % 100 == 0
+        if counter % 20000 == 0
           process.nextTick fiberRun
           Fiber.yield()
 
@@ -502,6 +502,7 @@ class BitcasaClient
       client.saveFolderTree()
 
     ).run()
+    return null
 
   deleteFile: (path,cb) ->
 
