@@ -255,6 +255,7 @@ class BitcasaClient
             fiber = Fiber.current
             fiberRun = ->
               fiber.run()
+              return null
             setTimeout(fiberRun, 61000)
             Fiber.yield()
             cb(null,failedArguments)

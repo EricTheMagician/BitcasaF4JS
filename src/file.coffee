@@ -49,6 +49,7 @@ class BitcasaFile
         fiber = Fiber.current
         fiberRun = ->
           fiber.run()
+          return null
 
         while client.downloadTree.has("#{file.bitcasaBasename}-#{chunkStart}")
           process.nextTick fiberRun
@@ -80,6 +81,7 @@ class BitcasaFile
         fiber = Fiber.current
         fiberRun = ->
           fiber.run()
+          return null
 
         while client.downloadTree.has("#{file.bitcasaBasename}-#{chunkStart}")
           process.nextTick fiberRun
