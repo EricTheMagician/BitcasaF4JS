@@ -40,10 +40,13 @@ client.validateAccessToken (err, data) ->
 errnoMap =
     EPERM: 1,
     ENOENT: 2,
+    EIO: 5,
     EACCES: 13,
     EEXIST: 17,
     ENOTDIR: 20,
+    EISDIR: 21,
     EINVAL: 22,
+    ESPIPE: 29,
     ENOTEMPTY: 39
 
 
@@ -85,8 +88,19 @@ read = (path, offset, len, buf, fh, cb) ->
         return cb(dataEnd-dataStart);
       catch error
         client.logger.log( "error", "failed reading:", error)
+        cb(-errnoMap.EIO)
+
+    #make sure that we are only reading a file
     file = client.folderTree.get(path)
-    file.download(offset, offset+len-1,callback)
+    if file instanceof BitcasaFile
+
+      #make sure the offset request is not bigger than the file itself
+      if offset < file.size
+        file.download(offset, offset+len-1,callback)
+      else
+        cb(-errnoMap.ESPIPE)
+    else
+      cb(-errnoMap.EISDIR)
 
   else
     return cb(-errnoMap.ENOENT)
