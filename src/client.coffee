@@ -583,7 +583,7 @@ Object.defineProperties(BitcasaClient.prototype, memoizeMethods({
       client.logger.log "silly", "requests: #{client.rateLimit.getTokensRemaining()}"
       if @rateLimit.tryRemoveTokens(1)
         callback = (data,response) ->
-          BitcasaFolder.parseFolder(data,response, client, cb)
+          BitcasaFolder.parseFolder( client, data, cb)
           return null
         depth = 1
         client.logger.log("debug", "getting folder info from bitcasa for #{path} -- depth #{depth}")
