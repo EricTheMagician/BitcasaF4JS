@@ -20,20 +20,21 @@ class BitcasaFile
     cb(0,attr)
 
   @recursive:  (client,file,rStart, rEnd) ->
-    rEnd = Math.min( Math.ceil(rEnd/client.chunkSize) * client.chunkSize, file.size)-1
-    baseName = pth.basename file.bitcasaPath
-    if (rEnd + 1) <= file.size and rEnd > rStart
-      parentPath = client.bitcasaTree.get(pth.dirname(file.bitcasaPath))
-      filePath = pth.join(parentPath,file.name)
-      cache = pth.join(client.cacheLocation,"#{baseName}-#{rStart}-#{rEnd-1}")
-      unless fs.existsSync(cache)
-        unless client.downloadTree.has("#{baseName}-#{rStart}")
-          client.logger.log("silly", "#{baseName}-#{rStart}-#{rEnd - 1} -- has: #{client.downloadTree.has("#{filePath}-#{rStart}")} - recursing with - (#{rStart}-#{rEnd})")
-          client.downloadTree.set("#{baseName}-#{rStart}",1)
-          _callback = (err, data) ->
-            client.downloadTree.delete("#{baseName}-#{rStart}")
-          client.download(client, file.bitcasaPath, file.name, rStart,rEnd,file.size, false, _callback )
-
+    fn = ->
+      rEnd = Math.min( Math.ceil(rEnd/client.chunkSize) * client.chunkSize, file.size)-1
+      baseName = pth.basename file.bitcasaPath
+      if (rEnd + 1) <= file.size and rEnd > rStart
+        parentPath = client.bitcasaTree.get(pth.dirname(file.bitcasaPath))
+        filePath = pth.join(parentPath,file.name)
+        cache = pth.join(client.cacheLocation,"#{baseName}-#{rStart}-#{rEnd-1}")
+        unless fs.existsSync(cache)
+          unless client.downloadTree.has("#{baseName}-#{rStart}")
+            client.logger.log("silly", "#{baseName}-#{rStart}-#{rEnd - 1} -- has: #{client.downloadTree.has("#{filePath}-#{rStart}")} - recursing with - (#{rStart}-#{rEnd})")
+            client.downloadTree.set("#{baseName}-#{rStart}",1)
+            _callback = (err, data) ->
+              client.downloadTree.delete("#{baseName}-#{rStart}")
+            client.download(client, file.bitcasaPath, file.name, rStart,rEnd,file.size, false, _callback )
+    setImmediate fn
   download: (start,end, cb) ->
     #check to see if part of the file is being downloaded or in use
     file = @
@@ -46,18 +47,20 @@ class BitcasaFile
     if nChunks < 1
       Fiber( ->
         fiber = Fiber.current
+        fiberRun = ->
+          fiber.run()
+          return null
+
         while client.downloadTree.has("#{file.bitcasaBasename}-#{chunkStart}")
-          fn = ->
-            fiber.run()
-          setTimeout fn, 100
+          setImmediate fiberRun
           Fiber.yield()
         client.downloadTree.set("#{file.bitcasaBasename}-#{chunkStart}", 1)
         client.logger.log "silly", "#{file.name} - (#{start}-#{end})"
 
         #download chunks
         data = download(client, file.bitcasaPath, file.name, start,end,file.size,true)
-        if (chunkEnd - chunkStart) / client.chunkSize <= 1
-          BitcasaFile.recursive(client,file, Math.floor(file.size / client.chunkSize) * client.chunkSize, file.size)
+
+        BitcasaFile.recursive(client,file, Math.floor(file.size / client.chunkSize) * client.chunkSize, file.size)
         BitcasaFile.recursive(client,file, chunkStart + i * client.chunkSize, chunkEnd + i * client.chunkSize) for i in [1..client.advancedChunks]
         try
           data = data.wait()
@@ -76,20 +79,19 @@ class BitcasaFile
 
       Fiber( ->
         fiber = Fiber.current
+        fiberRun = ->
+          fiber.run()
+          return null
+
         while client.downloadTree.has("#{file.bitcasaBasename}-#{chunkStart}")
-          fn = ->
-            fiber.run()
-          setTimeout fn, 100
+          setImmediate fiberRun
           Fiber.yield()
         data1 = download(client, file.bitcasaPath, file.name, start, end1,file.size, true)
         client.downloadTree.set("#{file.bitcasaBasename}-#{chunkStart}", 1)
 
         while client.downloadTree.has("#{file.bitcasaBasename}-#{chunkStart+client.chunkSize}")
-          fn = ->
-            fiber.run()
-          setTimeout fn, 100
+          setImmediate fiberRun
           Fiber.yield()
-
         data2 = download(client, file.bitcasaPath, file.name, start2, end,file.size, true)
         client.downloadTree.set("#{file.bitcasaBasename}-#{chunkStart+client.chunkSize}", 1)
 
@@ -111,7 +113,8 @@ class BitcasaFile
         buffer1 = data1.buffer.slice(data1.start, data1.end)
 
         if data2 == null or data2.buffer.length == 0
-          cb( new Buffer(0), 0, data1.buffer.length )
+          #since buffer1 is still good, just return that
+          cb( buffer1, 0, data1.buffer.length )
           return
         buffer2 = data2.buffer.slice(data2.start, data2.end)
 

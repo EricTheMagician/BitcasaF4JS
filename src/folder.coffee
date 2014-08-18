@@ -33,35 +33,69 @@ class BitcasaFolder
     return keys
 
 
-  @parseFolder: (data, response, client, retry, cb) ->
+  @parseFolder: (client, data, cb) ->
     try
-      data = JSON.parse(data)
-      # console.log(data.result)
-      if data.error
-        throw new Error('error with parsing folder')
-      for o in data.result.items
-        # console.log o
-        #get real path of parent
-        parent = client.bitcasaTree.get(pth.dirname(o.path))
-        realPath = pth.join(parent,o.name)
-
-        #add child to parent folder
-        parentFolder = client.folderTree.get parent
-        if o.name not in parentFolder.children
-          parentFolder.children.push o.name
-
-        if o.category == 'folders'
-          # keep track of the conversion of bitcasa path to real path
-          client.bitcasaTree.set o.path, realPath
-          client.folderTree.set( realPath, new BitcasaFolder(client, o.path, o.name, new Date(o.ctime), new Date(o.mtime), []) )
-        else
-          client.folderTree.set realPath, new BitcasaFile(client, o.path, o.name,o.size,  new Date(o.ctime), new Date(o.mtime))
+      result = JSON.parse(data)
     catch error
-      client.logger.log "debug", 'data was likely not a json variable', error, data
-      if typeof(retry) == typeof(Function)
-        retry()
-    if typeof(cb) == typeof(Function)
-      cb()
+      client.logger.log "error", "there was a problem parsing folder  - #{error} - folders length"
+      client.logger.log "debug", "the bad data was: #{data}"
+      processingError = true
+      cb(error)
+
+    if processingError
+      return null
+
+    if result.error
+      breakLoop = false
+      switch result.error.code
+        when 2002 #folder does not exist
+          parent = client.bitcasaTree.get(pth.dirname(o.path))
+          realPath = pth.join(parent,folders[i].name)
+          client.folderTree.delete(realPath)
+        when 9006
+          client.logger.log "debug", "api rate limit reached while getting folders"
+        else
+          client.logger.log "error", "there was an error getting folder: #{result.error.code} - #{result.error.message}"
+      cb(result.error)
+      return null
+
+    keys = []
+    for o in result.result.items
+      #get real path of parent
+      parent = client.bitcasaTree.get(pth.dirname(o.path))
+
+      #if the parent does not exist, skip it
+      if parent == undefined
+        continue
+
+      realPath = pth.join(parent,o.name)
+      keys.push realPath
+
+      parentFolder = client.folderTree.get parent
+      #if parent is undefined, parse later. sometimes, parent errored out while scanning.
+      if parentFolder == undefined
+        continue
+
+      #add child to parent
+      if o.name not in parentFolder.children
+        parentFolder.children.push o.name
+
+      if o.category == 'folders'
+        # keep track of the conversion of bitcasa path to real path
+        client.bitcasaTree.set o.path, realPath
+        existingFolder = client.folderTree.get(realPath)
+        children = []
+        if existingFolder != undefined
+          children = existingFolder.children
+        client.folderTree.set( realPath, new BitcasaFolder(client, o.path, o.name, new Date(o.ctime), new Date(o.mtime), children) )
+      else
+        client.folderTree.set realPath,    new BitcasaFile(client, o.path, o.name,o.size,  new Date(o.ctime), new Date(o.mtime))
+
+    _cb = ->
+      cb(null, keys)
+    setImmediate _cb
+
+    return null
   getAttr: (cb)->
     attr =
       mode: BitcasaFolder.folderAttr,
