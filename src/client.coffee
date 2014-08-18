@@ -368,21 +368,22 @@ class BitcasaClient
         return null
       start = new Date()
       while folders.length > 0
-        processing = []
-        client.logger.log  "silly", "folders length = #{folders.length}, processing length: #{processing.length}"
-        tokens = Math.min(Math.floor(client.rateLimit.getTokensRemaining()/6), folders.length - processing.length)
+        client.logger.log  "silly", "folders length = #{folders.length}"
+        tokens = Math.min(Math.floor(client.rateLimit.getTokensRemaining()/6), folders.length)
         if client.rateLimit.getTokensRemaining() < 30
           setImmediate fiberRun
           Fiber.yield()
           continue
+
+        processing = new Array(tokens)
         for i in [0...tokens]
           if not client.rateLimit.tryRemoveTokens(1)
-            setImmediate fiberRun
+            setTimeout fiberRun, 1000
             Fiber.yield()
-          processing.push getFolder(client, folders[i].bitcasaPath,depth )
+          processing[i] = getFolder(client, folders[i].bitcasaPath,depth )
         wait(processing)
         for i in [0...processing.length]
-          client.logger.log "silly", "proccessing[#{i}] out of #{processing.length} -- folders length = #{folders.length}"
+          client.logger.log "debug", "proccessing[#{i}] out of #{processing.length} -- folders length = #{folders.length}"
           processingError = false
           try #catch socket connection error
             data = processing[i].wait()
@@ -416,10 +417,10 @@ class BitcasaClient
         folders.splice 0, processing.length
         console.log "length of folders after splicing: #{folders.length}"
         if folders.length == 0 and foldersNextDepth.length > 0
-          newKeys.add(key) for key in keys
           folders = foldersNextDepth
+          foldersNextDepth = []
           oldDepth = depth + 1
-          depth = foldersNextDepth[0].bitcasaPath.match(/\//g).length
+          depth = folders[0].bitcasaPath.match(/\//g).length
           console.log "length of folders of nextDepth #{folders.length}"
           console.log "new depth is #{depth}"
 
