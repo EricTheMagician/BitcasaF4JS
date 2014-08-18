@@ -43,7 +43,7 @@ module.exports = (grunt) ->
           timeout: 30000,
           require: ['coffee-script/register'],
         },
-        src: ['test/testFS.coffee', 'test/testClient.coffee']
+        src: ['test/testClient.coffee', 'test/testFS.coffee']
       }
     },
     copy: {
