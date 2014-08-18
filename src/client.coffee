@@ -441,9 +441,7 @@ class BitcasaClient
         if newKeys.remove(key) == undefined
           client.folderTree.delete key
         if counter % 20000 == 0
-          setImmediate
-
-           fiberRun
+          setImmediate fiberRun
           Fiber.yield()
 
 
