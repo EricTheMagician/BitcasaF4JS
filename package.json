@@ -1,6 +1,6 @@
 {
   "name": "BitcasaF4JS",
-  "version": "0.9.3",
+  "version": "0.9.4",
   "description": "Bitcasa Fuse filesystem written in node",
   "author": {
     "name": "Eric Yen",
