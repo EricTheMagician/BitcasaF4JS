@@ -372,12 +372,12 @@ class BitcasaClient
         client.logger.log  "silly", "folders length = #{folders.length}, processing length: #{processing.length}"
         tokens = Math.min(Math.floor(client.rateLimit.getTokensRemaining()/6), folders.length - processing.length)
         if client.rateLimit.getTokensRemaining() < 30
-          process.nextTick fiberRun
+          setImmediate fiberRun
           Fiber.yield()
           continue
         for i in [0...tokens]
           if not client.rateLimit.tryRemoveTokens(1)
-            process.nextTick fiberRun
+            setImmediate fiberRun
             Fiber.yield()
           processing.push getFolder(client, folders[i].bitcasaPath,depth )
         wait(processing)
@@ -432,7 +432,7 @@ class BitcasaClient
         counter++
 
       #pause for a little after getting all keys
-      process.nextTick fiberRun
+      setImmediate fiberRun
       Fiber.yield()
 
       counter = 0
@@ -441,7 +441,9 @@ class BitcasaClient
         if newKeys.remove(key) == undefined
           client.folderTree.delete key
         if counter % 20000 == 0
-          process.nextTick fiberRun
+          setImmediate
+
+           fiberRun
           Fiber.yield()
 
 

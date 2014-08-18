@@ -34,7 +34,7 @@ class BitcasaFile
             _callback = (err, data) ->
               client.downloadTree.delete("#{baseName}-#{rStart}")
             client.download(client, file.bitcasaPath, file.name, rStart,rEnd,file.size, false, _callback )
-    process.nextTick fn
+    setImmediate fn
   download: (start,end, cb) ->
     #check to see if part of the file is being downloaded or in use
     file = @
@@ -52,7 +52,7 @@ class BitcasaFile
           return null
 
         while client.downloadTree.has("#{file.bitcasaBasename}-#{chunkStart}")
-          process.nextTick fiberRun
+          setImmediate fiberRun
           Fiber.yield()
         client.downloadTree.set("#{file.bitcasaBasename}-#{chunkStart}", 1)
         client.logger.log "silly", "#{file.name} - (#{start}-#{end})"
@@ -84,13 +84,13 @@ class BitcasaFile
           return null
 
         while client.downloadTree.has("#{file.bitcasaBasename}-#{chunkStart}")
-          process.nextTick fiberRun
+          setImmediate fiberRun
           Fiber.yield()
         data1 = download(client, file.bitcasaPath, file.name, start, end1,file.size, true)
         client.downloadTree.set("#{file.bitcasaBasename}-#{chunkStart}", 1)
 
         while client.downloadTree.has("#{file.bitcasaBasename}-#{chunkStart+client.chunkSize}")
-          process.nextTick fiberRun
+          setImmediate fiberRun
           Fiber.yield()
         data2 = download(client, file.bitcasaPath, file.name, start2, end,file.size, true)
         client.downloadTree.set("#{file.bitcasaBasename}-#{chunkStart+client.chunkSize}", 1)

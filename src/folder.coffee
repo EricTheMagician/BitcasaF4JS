@@ -93,7 +93,7 @@ class BitcasaFolder
 
     _cb = ->
       cb(null, keys)
-    process.nextTick _cb
+    setImmediate _cb
 
     return null
   getAttr: (cb)->
