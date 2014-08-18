@@ -11,6 +11,13 @@ Fiber = require 'fibers'
 wait = Future.wait
 RedBlackTree = require('data-structures').RedBlackTree
 
+_parseFolder = (client,data, cb)->
+  fn = ->
+    BitcasaFolder.parseFolder(client,data,cb)
+  setImmediate fn
+  
+parseFolder = Future.wrap(_parseFolder)
+
 #for mocha testing
 if Object.keys( module.exports ).length == 0
   r = require './folder.coffee'
@@ -360,7 +367,6 @@ class BitcasaClient
     foldersNextDepth = []
     depth = 1
     oldDepth = 0
-    parseFolder = Future.wrap(BitcasaFolder.parseFolder)
     Fiber( ->
       fiber = Fiber.current
       fiberRun = ->
