@@ -383,7 +383,7 @@ class BitcasaClient
           processing[i] = getFolder(client, folders[i].bitcasaPath,depth )
         wait(processing)
         for i in [0...processing.length]
-          client.logger.log "debug", "proccessing[#{i}] out of #{processing.length} -- folders length = #{folders.length}"
+          client.logger.log "silly", "proccessing[#{i}] out of #{processing.length} -- folders length = #{folders.length}"
           processingError = false
           try #catch socket connection error
             data = processing[i].wait()
