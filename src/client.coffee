@@ -15,7 +15,7 @@ _parseFolder = (client,data, cb)->
   fn = ->
     BitcasaFolder.parseFolder(client,data,cb)
   setImmediate fn
-  
+
 parseFolder = Future.wrap(_parseFolder)
 
 #for mocha testing
@@ -202,11 +202,11 @@ class BitcasaClient
           client.logger.log "debug", "download requests: #{client.rateLimit.getTokensRemaining()}"
           args =
             timeout: 360000
-
             "path":
               "path": path
             headers:
               Range: "bytes=#{chunkStart}-#{chunkEnd}"
+
           client.logger.log "debug", "starting to download #{location}"
           _download = (_cb) ->
             #ensure callback is only fired once.
@@ -222,6 +222,12 @@ class BitcasaClient
                 cbCalled = true
                 client.logger.log("error","there was an error downloading: #{err}")
                 _cb(null, {error: "failed downloading"})
+
+            fn = ->
+              if not cbCalled
+                cbCalled = true
+                _cb(null, {error: "taking to long to download a file"})
+            setTimeout fn, 300000 
 
           download = Future.wrap(_download)
           res = download().wait()
