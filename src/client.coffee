@@ -114,11 +114,9 @@ class BitcasaClient
 
   setRest: ->
     @client = new Client()
-    @client.registerMethod 'getRootFolder', "#{BASEURL}folders/?access_token=#{@accessToken}", "GET"
-    @client.registerMethod 'downloadChunk', "#{BASEURL}files/name.ext?path=${path}&access_token=#{@accessToken}", "GET"
     @client.registerMethod 'getFolder', "#{BASEURL}folders${path}?access_token=#{@accessToken}&depth=${depth}", "GET"
     @client.registerMethod 'getUserProfile', "#{BASEURL}user/profile?access_token=#{@accessToken}", "GET"
-    @client.registerMethod 'deleteFile', "#{BASEURL}files?access_token=#{@accessToken}&path=${path}", "DELETE"
+
   loginUrl: ->
     "#{BASEURL}oauth2/authenticate?client_id=#{@id}&redirect_url=#{@redirectUrl}"
 
@@ -199,35 +197,21 @@ class BitcasaClient
       else
         client.logger.log("debug", "#{name} - downloading #{chunkStart}-#{chunkEnd}")
         if client.rateLimit.tryRemoveTokens(1)
-          client.logger.log "debug", "download requests: #{client.rateLimit.getTokensRemaining()}"
-          args =
-            timeout: 360000
-            "path":
-              "path": path
-            headers:
-              Range: "bytes=#{chunkStart}-#{chunkEnd}"
+          client.logger.log "silly", "download requests: #{client.rateLimit.getTokensRemaining()}"
 
-          client.logger.log "debug", "starting to download #{location}"
+          client.logger.log "silly", "starting to download #{location}"
           _download = (_cb) ->
-            #ensure callback is only fired once.
-            cbCalled = false
-            req = client.client.methods.downloadChunk args, (data, response)->
-              if not cbCalled
-                cbCalled = true
-                res = {data:data, response: response, error: null}
-                _cb(null, res)
-
-            req.on 'error', (err) ->
-              if not cbCalled
-                cbCalled = true
-                client.logger.log("error","there was an error downloading: #{err}")
-                _cb(null, {error: "failed downloading"})
-
-            fn = ->
-              if not cbCalled
-                cbCalled = true
-                _cb(null, {error: "taking to long to download a file"})
-            setTimeout fn, 300000 
+            rest.get "#{BASEURL}files/name.ext?path=#{path}&access_token=#{client.accessToken}", {
+              decoding: buffer
+              timeout: 300000
+              headers:
+                Range: "bytes=#{chunkStart}-#{chunkEnd}"
+            }
+            .on 'complete', (result, response) ->
+              if result instanceof Error
+                _cb(null, {error: result})
+              else
+                _cb(null, {error:null, data: response.raw, response: response})
 
           download = Future.wrap(_download)
           res = download().wait()
