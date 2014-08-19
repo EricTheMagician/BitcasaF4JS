@@ -227,7 +227,7 @@ class BitcasaClient
               if not cbCalled
                 cbCalled = true
                 _cb(null, {error: "taking to long to download a file"})
-            setTimeout fn, 300000 
+            setTimeout fn, 300000
 
           download = Future.wrap(_download)
           res = download().wait()
@@ -414,9 +414,18 @@ class BitcasaClient
             client.logger.log "error", "there was a problem processing i=#{i}(#{folders[i].name}) - #{error} - folders length - #{folders.length} - data"
             client.logger.log "debug", "the bad data was: #{data}"
             processingError = true
+            if error.code
+              if error.code == 2002 or error.code == 2001
+                processingError = true
+              else
+                  folders.push(folders[i])
+
+            else
+              folders.push(folders[i])
+
+            processingError = true
 
           if processingError
-            folders.push(folders[i])
             continue
 
           for key in keys
