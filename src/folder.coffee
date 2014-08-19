@@ -48,6 +48,9 @@ class BitcasaFolder
     if result.error
       breakLoop = false
       switch result.error.code
+        when 2001
+          parent = client.bitcasaTree.get(pth.dirname(o.path))
+          realPath = pth.join(parent,folders[i].name)
         when 2002 #folder does not exist
           parent = client.bitcasaTree.get(pth.dirname(o.path))
           realPath = pth.join(parent,folders[i].name)
