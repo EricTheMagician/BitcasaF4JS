@@ -10,6 +10,8 @@ Future = require('fibers/future')
 Fiber = require 'fibers'
 wait = Future.wait
 RedBlackTree = require('data-structures').RedBlackTree
+util         = require("util")
+EventEmitter = require("events").EventEmitter
 
 _parseFolder = (client,data, cb)->
   fn = ->
@@ -548,4 +550,6 @@ Object.defineProperties(BitcasaClient.prototype, memoizeMethods({
 
   , { maxAge: 120000, length: 1 })
 }));
+
+util.inherits(BitcasaClient, EventEmitter)
 module.exports.client = BitcasaClient
