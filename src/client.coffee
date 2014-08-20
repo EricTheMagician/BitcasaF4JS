@@ -106,7 +106,7 @@ class BitcasaClient
     @downloadTree = new dict()
     @setRest()
     @ee = new EventEmitter()
-    @ee.setMaxListeners(200)
+    @ee.setMaxListeners(0)
     @downloadLocation = pth.join @cacheLocation, "download"
     @uploadLocation = pth.join @cacheLocation, "upload"
     fs.ensureDirSync(@downloadLocation)
