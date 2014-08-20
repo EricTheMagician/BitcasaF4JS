@@ -53,13 +53,14 @@ class BitcasaFile
 
         failedArgs = {buffer: new Buffer 0, start: 0, end: 0}
         cbCalled = false
-        client.ee.on "downloaded", (err, name, data) ->
+        _callback = (err, name, data) ->
           if name == "#{file.bitcasaBasename}-#{cStart}" and not cbCalled
             cbCalled = true
             client.downloadTree.delete("#{file.bitcasaBasename}-#{cStart}")
-            client.ee.removeListener 'downloaded', _download
+            client.ee.removeListener 'downloaded', _callback
 
             return _cb(err, data)
+        client.ee.on "downloaded", _callback
         fn = ->
           if not cbCalled
             cbCalled = true
