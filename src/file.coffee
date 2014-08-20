@@ -4,6 +4,11 @@ Fiber = require 'fibers'
 wait = Future.wait
 fs = require 'fs-extra'
 unlink = Future.wrap(fs.unlink)
+#since fs.exists does not return an error, wrap it using an error
+_exists = (path, cb) ->
+  fs.exists path, (success)->
+    cb(null,success)
+exists = Future.wrap(_exists)
 class BitcasaFile
   @fileAttr: 0o100777 #according to filesystem information, the 15th bit is set and the read and write are available for everyone
   constructor: (@client,@bitcasaPath, @name, @size, @ctime, @mtime) ->
@@ -43,7 +48,24 @@ class BitcasaFile
     end = Math.min(end, file.size-1 )
     chunkEnd = Math.min( Math.ceil(end/client.chunkSize) * client.chunkSize, file.size)-1 #and make sure that it's not bigger than the actual file
     nChunks = (chunkEnd - chunkStart)/client.chunkSize
-    download = Future.wrap(client.download)
+    _download = (_cb) ->
+      #wait for event emitting if downloading
+      #otherwise, just read the file if it exists
+      exist = exists(pth.join(client.downloadLocation, "#{file.bitcasaBasename}-#{chunkStart}-#{chunkEnd}")).wait()
+      if not exist
+        if not client.downloadTree.has("#{file.bitcasaBasename}-#{chunkStart}")
+          client.downloadTree.set("#{file.bitcasaBasename}-#{chunkStart}", 1)
+          data = client.download(client, file.bitcasaPath, file.name, start,end,file.size,true, ->)
+        client.ee.once "#{file.bitcasaBasename}-#{chunkStart}", (err, data) ->
+          client.downloadTree.delete("#{file.bitcasaBasename}-#{chunkStart}")
+          data.start -= chunkStart
+          data.end -= chunkStart
+          _cb(err, data)
+
+      else
+        client.download(client, file.bitcasaPath, file.name, start,end,file.size,true,_cb)
+
+    download = Future.wrap(_download)
     if nChunks < 1
       Fiber( ->
         fiber = Fiber.current
@@ -51,15 +73,10 @@ class BitcasaFile
           fiber.run()
           return null
 
-        while client.downloadTree.has("#{file.bitcasaBasename}-#{chunkStart}")
-          setImmediate fiberRun
-          Fiber.yield()
-        client.downloadTree.set("#{file.bitcasaBasename}-#{chunkStart}", 1)
         client.logger.log "silly", "#{file.name} - (#{start}-#{end})"
 
         #download chunks
-        data = download(client, file.bitcasaPath, file.name, start,end,file.size,true)
-
+        data = download()
         BitcasaFile.recursive(client,file, Math.floor(file.size / client.chunkSize) * client.chunkSize, file.size)
         BitcasaFile.recursive(client,file, chunkStart + i * client.chunkSize, chunkEnd + i * client.chunkSize) for i in [1..client.advancedChunks]
         try

@@ -106,6 +106,7 @@ class BitcasaClient
     @downloadTree = new dict()
     @setRest()
     @ee = new EventEmitter()
+    @ee.setMaxListeners(200)
     @downloadLocation = pth.join @cacheLocation, "download"
     @uploadLocation = pth.join @cacheLocation, "upload"
     fs.ensureDirSync(@downloadLocation)
@@ -189,7 +190,7 @@ class BitcasaClient
           client.logger.log('silly',"file exists: #{location}--#{buffer.slice(start,end).length}")
           return cb(null,args)
         else
-          cb(null,failedArguments)
+          return cb(null,failedArguments)
       else
         client.logger.log("debug", "#{name} - downloading #{chunkStart}-#{chunkEnd}")
         if client.rateLimit.tryRemoveTokens(1)
@@ -238,17 +239,17 @@ class BitcasaClient
 
               return cb "unhandled json error"
             return cb "unhandled data type while downloading"
-          else if  data.length != (chunkStart - chunkEnd + 1)
-            client.logger.log("debug", "failed to download #{location} -- #{data.length} - size mismatch")
+          else if  data.length !=  (chunkEnd - chunkStart + 1)
+            client.logger.log("debug", "failed to download #{location} -- #{data.length} -- #{chunkStart - chunkEnd + 1} -- size mismatch")
             return cb "data downloaded incorrectSize"
           else
             client.logger.log("debug", "successfully downloaded #{location}")
-            writeFile(location,data)
+            writeFile(location,data).wait()
             args =
               buffer: data,
               start: start - chunkStart,
               end : end+1-chunkStart
-
+            client.ee.emit "#{baseName}-#{chunkStart}", null, args
             return cb null, args
 
 

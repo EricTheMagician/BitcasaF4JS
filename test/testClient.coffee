@@ -89,8 +89,8 @@ describe 'BitcasaClient', ->
       file = client.folderTree.get( "/Bitcasa Infinite Drive/BitcasaF4JS/test.file")
       expect(file).to.exist
       cb = (buffer, start,end)->
-        expect( buffer.toString() ).to.equal(fileContent)
         expect( end - start ).to.equal(fileContent.length)
+        expect( buffer.toString() ).to.equal(fileContent)
         location = "#{config.cacheLocation}/download/#{file.bitcasaBasename}-0-#{file.size-1}"
         console.log location
         expect( fs.existsSync(location) ).to.be.true
@@ -104,9 +104,8 @@ describe 'BitcasaClient', ->
       cb = (buffer, start,end)->
         expect( buffer.toString() ).to.equal(fileContent)
         expect( end - start ).to.equal(fileContent.length)
-        expect( fs.existsSync("#{config.cacheLocation}/download/#{file.bitcasaBasename}-0-#{fileContent.length-1}")).to.be.true
         done()
-
+      expect( fs.existsSync("#{config.cacheLocation}/download/#{file.bitcasaBasename}-0-#{fileContent.length-1}")).to.be.true
       file.download(0, file.size-1, cb)
 
     it 'should fail to delete a non empty directory', (done) ->
