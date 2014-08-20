@@ -25,21 +25,17 @@ class BitcasaFile
     cb(0,attr)
 
   @recursive:  (client,file,rStart, rEnd) ->
-    fn = ->
-      rEnd = Math.min( Math.ceil(rEnd/client.chunkSize) * client.chunkSize, file.size)-1
-      baseName = pth.basename file.bitcasaPath
-      if (rEnd + 1) <= file.size and rEnd > rStart
-        parentPath = client.bitcasaTree.get(pth.dirname(file.bitcasaPath))
-        filePath = pth.join(parentPath,file.name)
-        cache = pth.join(client.cacheLocation,"#{baseName}-#{rStart}-#{rEnd-1}")
-        unless fs.existsSync(cache)
-          unless client.downloadTree.has("#{baseName}-#{rStart}")
-            client.logger.log("silly", "#{baseName}-#{rStart}-#{rEnd - 1} -- has: #{client.downloadTree.has("#{filePath}-#{rStart}")} - recursing with - (#{rStart}-#{rEnd})")
-            client.downloadTree.set("#{baseName}-#{rStart}",1)
-            _callback = (err, data) ->
-              client.downloadTree.delete("#{baseName}-#{rStart}")
-            client.download(client, file.bitcasaPath, file.name, rStart,rEnd,file.size, false, _callback )
-    setImmediate fn
+    rEnd = Math.min( Math.ceil(rEnd/client.chunkSize) * client.chunkSize, file.size)-1
+    baseName = pth.basename file.bitcasaPath
+    if (rEnd + 1) <= file.size and rEnd > rStart
+      parentPath = client.bitcasaTree.get(pth.dirname(file.bitcasaPath))
+      filePath = pth.join(parentPath,file.name)
+      cache = pth.join(client.cacheLocation,"#{baseName}-#{rStart}-#{rEnd-1}")
+      unless fs.existsSync(cache)
+        _callback = (err, data) ->
+          client.downloadTree.delete("#{baseName}-#{rStart}")
+        file.download(rStart,rEnd,file.size, false, _callback )
+   
   download: (start,end, cb) ->
     #check to see if part of the file is being downloaded or in use
     file = @
