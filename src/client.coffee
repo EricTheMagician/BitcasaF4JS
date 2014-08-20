@@ -233,14 +233,18 @@ class BitcasaClient
                 parentPath = client.bitcasaTree.get(pth.dirname(path))
                 filePath = pth.join(parentPath,name)
                 client.folderTree.delete(filePath)
+                client.ee.emit "downloaded", "file does not exist anymore","#{baseName}-#{chunkStart}", failedArguments
                 return cb("file does not exist anymore", failedArguments)
               if res.error.code == 9006
+                client.ee.emit "downloaded", "api rate limit reached while downloading","#{baseName}-#{chunkStart}", failedArguments
                 return cb "api rate limit reached while downloading", failedArguments
 
+              client.ee.emit "downloaded", "unhandled json error", "#{baseName}-#{chunkStart}", failedArguments
               return cb "unhandled json error"
             return cb "unhandled data type while downloading"
           else if  data.length !=  (chunkEnd - chunkStart + 1)
             client.logger.log("debug", "failed to download #{location} -- #{data.length} -- #{chunkStart - chunkEnd + 1} -- size mismatch")
+            client.ee.emit "downloaded", "data downloaded incorrectSize", "#{baseName}-#{chunkStart}", failedArguments
             return cb "data downloaded incorrectSize"
           else
             client.logger.log("debug", "successfully downloaded #{location}")
@@ -255,7 +259,8 @@ class BitcasaClient
 
         else #for not having enough tokens
           client.logger.log "debug", "downloading file failed: out of tokens"
-          cb null, failedArguments
+          client.ee.emit "downloaded", "downloading file failed: out of tokens", "#{baseName}-#{chunkStart}", args
+          return cb null, failedArguments
 
 
     ).run()
