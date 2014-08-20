@@ -8,7 +8,7 @@ unlink = Future.wrap(fs.unlink)
 _exists = (path, cb) ->
   fs.exists path, (success)->
     cb(null,success)
-exists = Future.wrap(_exists)
+exists = Future.wrap(_exists,1)
 class BitcasaFile
   @fileAttr: 0o100777 #according to filesystem information, the 15th bit is set and the read and write are available for everyone
   constructor: (@client,@bitcasaPath, @name, @size, @ctime, @mtime) ->
@@ -42,19 +42,19 @@ class BitcasaFile
     end = Math.min(end, file.size-1 )
     chunkEnd = Math.min( Math.ceil(end/client.chunkSize) * client.chunkSize, file.size)-1 #and make sure that it's not bigger than the actual file
     nChunks = (chunkEnd - chunkStart)/client.chunkSize
-    _download = (_cb) ->
+    _download = (cStart, cEnd,_cb) ->
       #wait for event emitting if downloading
       #otherwise, just read the file if it exists
-      exist = exists(pth.join(client.downloadLocation, "#{file.bitcasaBasename}-#{chunkStart}-#{chunkEnd}")).wait()
+      exist = exists(pth.join(client.downloadLocation, "#{file.bitcasaBasename}-#{cStart}-#{cEnd}")).wait()
       unless exist
-        if not client.downloadTree.has("#{file.bitcasaBasename}-#{chunkStart}")
-          client.downloadTree.set("#{file.bitcasaBasename}-#{chunkStart}", 1)
+        if not client.downloadTree.has("#{file.bitcasaBasename}-#{cStart}")
+          client.downloadTree.set("#{file.bitcasaBasename}-#{cStart}", 1)
           data = client.download(client, file.bitcasaPath, file.name, start,end,file.size,readAhead, ->)
-        client.ee.once "#{file.bitcasaBasename}-#{chunkStart}", (err, data) ->
-          client.downloadTree.delete("#{file.bitcasaBasename}-#{chunkStart}")
-          data.start -= chunkStart
-          data.end -= chunkStart
-          client.ee.removeListener "#{file.bitcasaBasename}-#{chunkStart}", ->
+        client.ee.once "#{file.bitcasaBasename}-#{cStart}", (err, data) ->
+          client.downloadTree.delete("#{file.bitcasaBasename}-#{cStart}")
+          data.start -= cStart
+          data.end -= cStart
+          client.ee.removeListener "#{file.bitcasaBasename}-#{cStart}", ->
           return _cb(err, data)
       else
         client.download(client, file.bitcasaPath, file.name, start,end,file.size,readAhead,_cb)
@@ -70,7 +70,7 @@ class BitcasaFile
         client.logger.log "silly", "#{file.name} - (#{start}-#{end})"
 
         #download chunks
-        data = download()
+        data = download(start,end)
         #only recuse on certain cases
         if readAhead
           BitcasaFile.recursive(client,file, Math.floor(file.size / client.chunkSize) * client.chunkSize, file.size)
@@ -82,7 +82,6 @@ class BitcasaFile
         if data == null
           cb new Buffer(0), 0,0
           return
-        client.downloadTree.delete("#{file.bitcasaBasename}-#{chunkStart}")
         cb( data.buffer, data.start, data.end )
         client.logger.log "silly", "after downloading - #{data.buffer.length} - #{data.start} - #{data.end}"
       ).run()
@@ -92,33 +91,18 @@ class BitcasaFile
 
       Fiber( ->
         fiber = Fiber.current
-        fiberRun = ->
-          fiber.run()
-          return null
-
-        while client.downloadTree.has("#{file.bitcasaBasename}-#{chunkStart}")
-          setImmediate fiberRun
-          Fiber.yield()
-        data1 = download(client, file.bitcasaPath, file.name, start, end1,file.size, true)
-        client.downloadTree.set("#{file.bitcasaBasename}-#{chunkStart}", 1)
-
-        while client.downloadTree.has("#{file.bitcasaBasename}-#{chunkStart+client.chunkSize}")
-          setImmediate fiberRun
-          Fiber.yield()
-        data2 = download(client, file.bitcasaPath, file.name, start2, end,file.size, true)
-        client.downloadTree.set("#{file.bitcasaBasename}-#{chunkStart+client.chunkSize}", 1)
+        data1 = download( start, end1)
+        data2 = download( start2, end)
 
         try #check that data1 does not have any connection error
           data1 = data1.wait()
         catch error
           data1 = null
-        client.downloadTree.delete("#{file.bitcasaBasename}-#{chunkStart}")
 
         try #check that data1 does not have any connection error
           data2 = data2.wait()
         catch
           data2 = null
-        client.downloadTree.delete("#{file.bitcasaBasename}-#{chunkStart+client.chunkSize}", 1)
 
         if data1 == null or data1.buffer.length == 0
           cb( new Buffer(0), 0, 0)
