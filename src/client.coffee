@@ -104,10 +104,7 @@ class BitcasaClient
     @folderTree = new dict({'/': root})
     @bitcasaTree = new dict({'/': '/'})
     @downloadTree = new dict()
-    if @accessToken == null
-      throw new Error "accessToken in the config file cannot be blank"
-    else
-      @setRest()
+    @setRest()
 
     @downloadLocation = pth.join @cacheLocation, "download"
     @uploadLocation = pth.join @cacheLocation, "upload"
