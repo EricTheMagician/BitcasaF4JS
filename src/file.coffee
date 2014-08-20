@@ -45,16 +45,30 @@ class BitcasaFile
     _download = (cStart, cEnd,_cb) ->
       #wait for event emitting if downloading
       #otherwise, just read the file if it exists
-      exist = exists(pth.join(client.downloadLocation, "#{file.bitcasaBasename}-#{cStart}-#{cEnd}")).wait()
+      exist = exists(pth.join(client.downloadLocation, "#{file.bitcasaBasename}-#{Math.floor((cStart)/client.chunkSize) * client.chunkSize}-#{ Math.min( Math.ceil(cEnd/client.chunkSize) * client.chunkSize, file.size)-1}")).wait()
       unless exist
         unless client.downloadTree.has("#{file.bitcasaBasename}-#{cStart}")
           client.downloadTree.set("#{file.bitcasaBasename}-#{cStart}", 1)
           client.download(client, file.bitcasaPath, file.name, cStart,cEnd,file.size,readAhead, ->)
-        client.ee.once "#{file.bitcasaBasename}-#{cStart}", (err, data) ->
-          client.downloadTree.delete("#{file.bitcasaBasename}-#{cStart}")
-          client.ee.removeListener "#{file.bitcasaBasename}-#{cStart}", ->
-          return _cb(err, data)
+
+        failedArgs = {buffer: new Buffer 0, start: 0, end: 0}
+        cbCalled = false
+        client.ee.on "downloaded", (err, name, data) ->
+          if name == "#{file.bitcasaBasename}-#{cStart}" and not cbCalled
+            cbCalled = true
+            client.downloadTree.delete("#{file.bitcasaBasename}-#{cStart}")
+            client.ee.removeListener 'downloaded', _download
+
+            return _cb(err, data)
+        fn = ->
+          if not cbCalled
+            cbCalled = true
+            _download(cStart, cEnd, _cb)
+        setTimeout fn, 120000
       else
+        callback = (err, data) ->
+          client.logger.log "debug", "callng callback"
+          _cb(err,data)
         client.download(client, file.bitcasaPath, file.name, cStart,cEnd,file.size,readAhead,_cb)
 
     download = Future.wrap(_download)

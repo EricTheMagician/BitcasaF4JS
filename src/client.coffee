@@ -249,7 +249,7 @@ class BitcasaClient
               buffer: data,
               start: start - chunkStart,
               end : end+1-chunkStart
-            client.ee.emit "#{baseName}-#{chunkStart}", null, args
+            client.ee.emit "downloaded", null,"#{baseName}-#{chunkStart}", args
             return cb null, args
 
 
