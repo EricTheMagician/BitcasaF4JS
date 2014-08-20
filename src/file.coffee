@@ -34,7 +34,7 @@ class BitcasaFile
       unless fs.existsSync(cache)
         _callback = (err, data) ->
           client.downloadTree.delete("#{baseName}-#{rStart}")
-        file.download(rStart,rEnd,file.size, false, _callback )
+        file.download(rStart,rEnd, _callback )
 
   download: (start,end, cb) ->
     #check to see if part of the file is being downloaded or in use
@@ -56,9 +56,8 @@ class BitcasaFile
           client.downloadTree.delete("#{file.bitcasaBasename}-#{chunkStart}")
           data.start -= chunkStart
           data.end -= chunkStart
-          _cb(err, data)
-          client.ee.removeListener "#{file.bitcasaBasename}-#{chunkStart}"
-
+          client.ee.removeListener "#{file.bitcasaBasename}-#{chunkStart}", ->
+          return _cb(err, data)
       else
         client.download(client, file.bitcasaPath, file.name, start,end,file.size,true,_cb)
 
