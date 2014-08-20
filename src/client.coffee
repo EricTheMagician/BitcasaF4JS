@@ -105,7 +105,7 @@ class BitcasaClient
     @bitcasaTree = new dict({'/': '/'})
     @downloadTree = new dict()
     @setRest()
-
+    @ee = new EventEmitter()
     @downloadLocation = pth.join @cacheLocation, "download"
     @uploadLocation = pth.join @cacheLocation, "upload"
     fs.ensureDirSync(@downloadLocation)
@@ -160,9 +160,6 @@ class BitcasaClient
     chunkEnd = Math.min( Math.ceil(end/client.chunkSize) * client.chunkSize, maxSize)-1 #and make sure that it's not bigger than the actual file
 
     chunks = (chunkEnd - chunkStart)/client.chunkSize
-    if chunks > 1 and (maxSize - start) > 65536
-      client.logger.log("debug", "number chunks requested greater than 1 - (start,end) = (#{start}-#{end})")
-      client.logger.log("debug", "number chunks requested greater than 1 - (chunkStart,chunkEnd) = (#{chunkStart}-#{chunkEnd})")
 
     Fiber( ->
       baseName = pth.basename path
@@ -532,5 +529,4 @@ Object.defineProperties(BitcasaClient.prototype, memoizeMethods({
   , { maxAge: 120000, length: 1 })
 }));
 
-util.inherits(BitcasaClient, EventEmitter)
 module.exports.client = BitcasaClient
