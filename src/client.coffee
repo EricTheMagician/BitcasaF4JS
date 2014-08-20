@@ -216,14 +216,12 @@ class BitcasaClient
           res = download().wait()
 
           if res.error
-            cb(null,failedArguments)
+            cb(res.error.message,failedArguments)
             return
 
           data = res.data
           response = res.response
 
-          failed = true #assume that the download failed
-          apiLimit = false #assume that the error was not hitting the apiLimit
           client.logger.log("debug", "downloaded: #{location} - #{chunkEnd-chunkStart} -- limit #{client.rateLimit.getTokensRemaining()}")
 
           if not (data instanceof Buffer)
@@ -237,40 +235,26 @@ class BitcasaClient
                 parentPath = client.bitcasaTree.get(pth.dirname(path))
                 filePath = pth.join(parentPath,name)
                 client.folderTree.delete(filePath)
+                return cb("file does not exist anymore", failedArguments)
               if res.error.code == 9006
-                apiLimit = true
-          else if  data.length < (chunkStart - chunkEnd + 1)
+                return cb "api rate limit reached while downloading", failedArguments
+
+              return cb "unhandled json error"
+            return cb "unhandled data type while downloading"
+          else if  data.length != (chunkStart - chunkEnd + 1)
             client.logger.log("debug", "failed to download #{location} -- #{data.length} - size mismatch")
+            return cb "data downloaded incorrectSize"
           else
             client.logger.log("debug", "successfully downloaded #{location}")
             writeFile(location,data)
-            failed = false
-
-
-          if failed and apiLimit #api limit
-            fiber = Fiber.current
-            fiberRun = ->
-              fiber.run()
-              return null
-            setTimeout(fiberRun, 61000)
-            Fiber.yield()
-            cb(null,failedArguments)
-          else if recurse and failed  #let the fs decide what to do.
-            args =
-              buffer: new Buffer(0),
-              start: 0,
-              end : 0
-            cb(null,args)
-          else if (failed) and (not recurse)
-            client.downloadTree.delete("#{baseName}-#{chunkStart}")
-            cb(null, failedArguments)
-          else if not failed
             args =
               buffer: data,
               start: start - chunkStart,
               end : end+1-chunkStart
-            client.downloadTree.delete("#{baseName}-#{chunkStart}")
-            cb(null, args )
+
+            return cb null, args
+
+
         else #for not having enough tokens
           client.logger.log "debug", "downloading file failed: out of tokens"
           cb null, failedArguments
