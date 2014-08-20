@@ -30,13 +30,11 @@ class BitcasaFile
     if (rEnd + 1) <= file.size and rEnd > rStart
       parentPath = client.bitcasaTree.get(pth.dirname(file.bitcasaPath))
       filePath = pth.join(parentPath,file.name)
-      cache = pth.join(client.cacheLocation,"#{baseName}-#{rStart}-#{rEnd-1}")
+      cache = pth.join(client.cacheLocation,"#{baseName}-#{rStart}-#{rEnd}")
       unless fs.existsSync(cache)
-        _callback = (err, data) ->
-          client.downloadTree.delete("#{baseName}-#{rStart}")
-        file.download(rStart,rEnd, _callback )
+        file.download(rStart,rEnd, false, -> )
 
-  download: (start,end, cb) ->
+  download: (start,end, readAhead, cb) ->
     #check to see if part of the file is being downloaded or in use
     file = @
     client = @client
@@ -51,7 +49,7 @@ class BitcasaFile
       unless exist
         if not client.downloadTree.has("#{file.bitcasaBasename}-#{chunkStart}")
           client.downloadTree.set("#{file.bitcasaBasename}-#{chunkStart}", 1)
-          data = client.download(client, file.bitcasaPath, file.name, start,end,file.size,true, ->)
+          data = client.download(client, file.bitcasaPath, file.name, start,end,file.size,readAhead, ->)
         client.ee.once "#{file.bitcasaBasename}-#{chunkStart}", (err, data) ->
           client.downloadTree.delete("#{file.bitcasaBasename}-#{chunkStart}")
           data.start -= chunkStart
@@ -59,7 +57,7 @@ class BitcasaFile
           client.ee.removeListener "#{file.bitcasaBasename}-#{chunkStart}", ->
           return _cb(err, data)
       else
-        client.download(client, file.bitcasaPath, file.name, start,end,file.size,true,_cb)
+        client.download(client, file.bitcasaPath, file.name, start,end,file.size,readAhead,_cb)
 
     download = Future.wrap(_download)
     if nChunks < 1
@@ -74,7 +72,7 @@ class BitcasaFile
         #download chunks
         data = download()
         #only recuse on certain cases
-        if chunkStart <= start < chunkStart + 32768 #32kb
+        if readAhead
           BitcasaFile.recursive(client,file, Math.floor(file.size / client.chunkSize) * client.chunkSize, file.size)
           BitcasaFile.recursive(client,file, chunkStart + i * client.chunkSize, chunkEnd + i * client.chunkSize) for i in [1..client.advancedChunks]
         try
