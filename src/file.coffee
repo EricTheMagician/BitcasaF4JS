@@ -35,7 +35,7 @@ class BitcasaFile
         _callback = (err, data) ->
           client.downloadTree.delete("#{baseName}-#{rStart}")
         file.download(rStart,rEnd,file.size, false, _callback )
-   
+
   download: (start,end, cb) ->
     #check to see if part of the file is being downloaded or in use
     file = @
@@ -73,8 +73,10 @@ class BitcasaFile
 
         #download chunks
         data = download()
-        BitcasaFile.recursive(client,file, Math.floor(file.size / client.chunkSize) * client.chunkSize, file.size)
-        BitcasaFile.recursive(client,file, chunkStart + i * client.chunkSize, chunkEnd + i * client.chunkSize) for i in [1..client.advancedChunks]
+        #only recuse on certain cases
+        if chunkStart <= start < chunkStart + 32768 #32kb
+          BitcasaFile.recursive(client,file, Math.floor(file.size / client.chunkSize) * client.chunkSize, file.size)
+          BitcasaFile.recursive(client,file, chunkStart + i * client.chunkSize, chunkEnd + i * client.chunkSize) for i in [1..client.advancedChunks]
         try
           data = data.wait()
         catch error #there might have been a connection error
