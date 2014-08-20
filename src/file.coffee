@@ -47,17 +47,15 @@ class BitcasaFile
       #otherwise, just read the file if it exists
       exist = exists(pth.join(client.downloadLocation, "#{file.bitcasaBasename}-#{cStart}-#{cEnd}")).wait()
       unless exist
-        if not client.downloadTree.has("#{file.bitcasaBasename}-#{cStart}")
+        unless client.downloadTree.has("#{file.bitcasaBasename}-#{cStart}")
           client.downloadTree.set("#{file.bitcasaBasename}-#{cStart}", 1)
-          data = client.download(client, file.bitcasaPath, file.name, start,end,file.size,readAhead, ->)
+          client.download(client, file.bitcasaPath, file.name, cStart,cEnd,file.size,readAhead, ->)
         client.ee.once "#{file.bitcasaBasename}-#{cStart}", (err, data) ->
           client.downloadTree.delete("#{file.bitcasaBasename}-#{cStart}")
-          data.start -= cStart
-          data.end -= cStart
           client.ee.removeListener "#{file.bitcasaBasename}-#{cStart}", ->
           return _cb(err, data)
       else
-        client.download(client, file.bitcasaPath, file.name, start,end,file.size,readAhead,_cb)
+        client.download(client, file.bitcasaPath, file.name, cStart,cEnd,file.size,readAhead,_cb)
 
     download = Future.wrap(_download)
     if nChunks < 1
