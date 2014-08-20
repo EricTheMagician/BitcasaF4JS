@@ -49,12 +49,9 @@ class BitcasaFolder
       breakLoop = false
       switch result.error.code
         when 2001
-          parent = client.bitcasaTree.get(pth.dirname(o.path))
-          realPath = pth.join(parent,folders[i].name)
+          client.logger.log "debug", "manifest does not exist"
         when 2002 #folder does not exist
-          parent = client.bitcasaTree.get(pth.dirname(o.path))
-          realPath = pth.join(parent,folders[i].name)
-          client.folderTree.delete(realPath)
+          client.logger.log "debug", "folder does not exist anymore"
         when 9006
           client.logger.log "debug", "api rate limit reached while getting folders"
         else
