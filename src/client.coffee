@@ -423,7 +423,7 @@ class BitcasaClient
           console.log "new depth is #{depth}"
 
       client.logger.log "debug", "it took #{Math.ceil( ((new Date())-start)/60000)} minutes to update folders"
-      console.log "folderTree Size Before: #{client.folderTree.size}"
+      console.log "folderTree Size Before: #{client.folderTree.count()}"
 
       #pause for a little after getting all keys
       setImmediate fiberRun
@@ -438,7 +438,7 @@ class BitcasaClient
         unless client.folderTree.get(key).updated
           client.folderTree.delete(key)
 
-      console.log "folderTree Size After: #{client.folderTree.size}"
+      console.log "folderTree Size After: #{client.folderTree.count()}"
 
       client.saveFolderTree()
 
