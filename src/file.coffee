@@ -11,7 +11,7 @@ _exists = (path, cb) ->
 exists = Future.wrap(_exists,1)
 class BitcasaFile
   @fileAttr: 0o100777 #according to filesystem information, the 15th bit is set and the read and write are available for everyone
-  constructor: (@client,@bitcasaPath, @name, @size, @ctime, @mtime) ->
+  constructor: (@client,@bitcasaPath, @name, @size, @ctime, @mtime, @updated) ->
     @bitcasaBasename = pth.basename @bitcasaPath
 
 

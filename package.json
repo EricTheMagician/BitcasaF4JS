@@ -17,11 +17,10 @@
   "dependencies": {
     "coffee-script": "~1.7.1",
     "d": "~0.1.1",
-    "data-structures": "^1.4.2",
-    "dict": "~1.4.0",
     "fibers": "^1.0.1",
     "fs-extra": "^0.10.0",
     "fuse4js": "~0.1.9",
+    "hashmap": "^1.1.0",
     "limiter": "~1.0.5",
     "memoizee": "~0.3.5",
     "mmmagic": "^0.3.8",

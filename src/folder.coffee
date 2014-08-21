@@ -10,7 +10,7 @@ else
 class BitcasaFolder
   @folderAttr = 0o40777 ##according to filesystem information, the 14th bit is set and the read and write are available for everyone
 
-  constructor: (@client, @bitcasaPath, @name, @ctime, @mtime, @children = [])->
+  constructor: (@client, @bitcasaPath, @name, @ctime, @mtime, @children, @updated)->
 
   @parseItems: (client,items) ->
     keys = []
@@ -27,9 +27,9 @@ class BitcasaFolder
       if o.category == 'folders'
         # keep track of the conversion of bitcasa path to real path
         client.bitcasaTree.set o.path, realPath
-        client.folderTree.set( realPath, new BitcasaFolder(client, o.path, o.name, new Date(o.ctime), new Date(o.mtime), []) )
+        client.folderTree.set( realPath, new BitcasaFolder(client, o.path, o.name, new Date(o.ctime), new Date(o.mtime), [], true) )
       else
-        client.folderTree.set realPath, new BitcasaFile(client, o.path, o.name,o.size,  new Date(o.ctime), new Date(o.mtime))
+        client.folderTree.set realPath, new BitcasaFile(client, o.path, o.name,o.size,  new Date(o.ctime), new Date(o.mtime), true)
     return keys
 
 
@@ -86,14 +86,16 @@ class BitcasaFolder
         if obj = client.folderTree.get( realPath )
           if obj.mtime.getTime() !=  o.mtime
             obj.mtime = new Date(o.mtime)
+          obj.updated = true
         else
-          client.folderTree.set( realPath, new BitcasaFolder(client, o.path, o.name, new Date(o.ctime), new Date(o.mtime), []) )
+          client.folderTree.set( realPath, new BitcasaFolder(client, o.path, o.name, new Date(o.ctime), new Date(o.mtime), [], true) )
       else
         if obj = client.folderTree.get( realPath )
           if obj.mtime.getTime() !=  o.mtime
             obj.mtime = new Date(o.mtime)
+          obj.updated = true
         else
-          client.folderTree.set realPath,    new BitcasaFile(client, o.path, o.name,o.size,  new Date(o.ctime), new Date(o.mtime))
+          client.folderTree.set realPath,    new BitcasaFile(client, o.path, o.name,o.size,  new Date(o.ctime), new Date(o.mtime), true)
 
     _cb = ->
       cb(null, keys)
