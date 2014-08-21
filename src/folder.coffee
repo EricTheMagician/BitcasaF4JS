@@ -83,13 +83,17 @@ class BitcasaFolder
       if o.category == 'folders'
         # keep track of the conversion of bitcasa path to real path
         client.bitcasaTree.set o.path, realPath
-        existingFolder = client.folderTree.get(realPath)
-        children = []
-        if existingFolder != undefined
-          children = existingFolder.children
-        client.folderTree.set( realPath, new BitcasaFolder(client, o.path, o.name, new Date(o.ctime), new Date(o.mtime), children) )
+        if obj = client.folderTree.get( realPath )
+          if obj.mtime.getTime() !=  o.mtime
+            obj.mtime = new Date(o.mtime)
+        else
+          client.folderTree.set( realPath, new BitcasaFolder(client, o.path, o.name, new Date(o.ctime), new Date(o.mtime), []) )
       else
-        client.folderTree.set realPath,    new BitcasaFile(client, o.path, o.name,o.size,  new Date(o.ctime), new Date(o.mtime))
+        if obj = client.folderTree.get( realPath )
+          if obj.mtime.getTime() !=  o.mtime
+            obj.mtime = new Date(o.mtime)
+        else
+          client.folderTree.set realPath,    new BitcasaFile(client, o.path, o.name,o.size,  new Date(o.ctime), new Date(o.mtime))
 
     _cb = ->
       cb(null, keys)
