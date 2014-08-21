@@ -1,7 +1,7 @@
 BASEURL = 'https://developer.api.bitcasa.com/v1/'
 RateLimiter = require('limiter').RateLimiter
 Client = require('node-rest-client').Client;
-hashmap = require 'hashmap'
+hashmap = require( 'hashmap' ).HashMap
 pth = require 'path'
 fs = require 'fs-extra'
 memoize = require 'memoizee'
@@ -101,8 +101,10 @@ class BitcasaClient
     @rateLimit = new RateLimiter 175, 'minute'
     now = (new Date)
     root = new BitcasaFolder(@,'/', '', now, now, [], true)
-    @folderTree = new hashmap({'/': root})
-    @bitcasaTree = new hashmap({'/': '/'})
+    @folderTree = new hashmap()
+    @folderTree.set("/", root)
+    @bitcasaTree = new hashmap()
+    @bitcasaTree.set("/", "/")
     @downloadTree = new hashmap()
     @setRest()
     @ee = new EventEmitter()
