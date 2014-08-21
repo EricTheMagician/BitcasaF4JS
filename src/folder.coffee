@@ -69,7 +69,6 @@ class BitcasaFolder
         continue
 
       realPath = pth.join(parent,o.name)
-      keys.push realPath
 
       parentFolder = client.folderTree.get parent
       #if parent is undefined, parse later. sometimes, parent errored out while scanning.
@@ -83,6 +82,8 @@ class BitcasaFolder
       if o.category == 'folders'
         # keep track of the conversion of bitcasa path to real path
         client.bitcasaTree.set o.path, realPath
+        keys.push realPath
+
         if obj = client.folderTree.get( realPath )
           if obj.mtime.getTime() !=  o.mtime
             obj.mtime = new Date(o.mtime)
