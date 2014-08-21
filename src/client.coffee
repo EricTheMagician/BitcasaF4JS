@@ -1,7 +1,7 @@
 BASEURL = 'https://developer.api.bitcasa.com/v1/'
 RateLimiter = require('limiter').RateLimiter
 Client = require('node-rest-client').Client;
-dict = require 'dict'
+hashmap = require 'hashmap'
 pth = require 'path'
 fs = require 'fs-extra'
 memoize = require 'memoizee'
@@ -101,9 +101,9 @@ class BitcasaClient
     @rateLimit = new RateLimiter 175, 'minute'
     now = (new Date)
     root = new BitcasaFolder(@,'/', '', now, now, [], true)
-    @folderTree = new dict({'/': root})
-    @bitcasaTree = new dict({'/': '/'})
-    @downloadTree = new dict()
+    @folderTree = new hashmap({'/': root})
+    @bitcasaTree = new hashmap({'/': '/'})
+    @downloadTree = new hashmap()
     @setRest()
     @ee = new EventEmitter()
     @ee.setMaxListeners(0)
@@ -338,7 +338,6 @@ class BitcasaClient
 
   getAllFolders: ->
     client = @
-    newKeys = new RedBlackTree ['/']
     folders = [client.folderTree.get('/')]
     foldersNextDepth = []
     depth = 1
@@ -349,9 +348,13 @@ class BitcasaClient
         fiber.run()
         return null
       start = new Date()
-      client.folderTree.forEach (value, key) ->
-        value.updated = false
+      value.updated = false for value in client.folderTree.values()
       client.folderTree.get('/').updated = true
+
+      #pause for a little after getting all keys
+      setImmediate fiberRun
+      Fiber.yield()
+
       while folders.length > 0
         client.logger.log  "silly", "folders length = #{folders.length}"
         tokens = Math.min(Math.floor(client.rateLimit.getTokensRemaining()/6), folders.length)
@@ -402,7 +405,6 @@ class BitcasaClient
             continue
 
           for key in keys
-            newKeys.add key
             if key.match(/\//g).length  == (oldDepth + depth + 1)
               o = client.folderTree.get key
               if o instanceof BitcasaFolder
@@ -420,16 +422,19 @@ class BitcasaClient
 
       client.logger.log "debug", "it took #{Math.ceil( ((new Date())-start)/60000)} minutes to update folders"
       console.log "folderTree Size Before: #{client.folderTree.size}"
-      deletedKeys = []
-      client.folderTree.forEach (value,key) ->
-        unless value.updated
-          deletedKeys.push key
+
       #pause for a little after getting all keys
       setImmediate fiberRun
       Fiber.yield()
+      counter = 0
+      for key in client.folderTree.keys()
+        counter++
+        if counter % 1000 == 0
+          setImmediate fiberRun
+          Fiber.yield()
 
-      for key in deletedKeys
-        client.folderTree.delete key
+        unless client.folderTree.get(key).updated
+          client.folderTree.delete(key)
 
       console.log "folderTree Size After: #{client.folderTree.size}"
 
