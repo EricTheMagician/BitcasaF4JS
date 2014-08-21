@@ -153,8 +153,8 @@ class BitcasaFolder
       if err
         return cb err
       realPath = client.bitcasaTree.get folder.bitcasaPath
-      client.bitcasaTree.delete folder.bitcasaPath
-      client.folderTree.delete realPath
+      client.bitcasaTree.remove folder.bitcasaPath
+      client.folderTree.remove realPath
 
       parentFolder = client.folderTree.get pth.dirname realPath
       idx = parentFolder.children.indexOf folder.name

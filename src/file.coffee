@@ -56,7 +56,7 @@ class BitcasaFile
         _callback = (err, name, data) ->
           if name == "#{file.bitcasaBasename}-#{cStart}" and not cbCalled
             cbCalled = true
-            client.downloadTree.delete("#{file.bitcasaBasename}-#{cStart}")
+            client.downloadTree.remove("#{file.bitcasaBasename}-#{cStart}")
             client.ee.removeListener 'downloaded', _callback
 
             return _cb(err, data)
@@ -158,7 +158,7 @@ class BitcasaFile
     .run()
     parent = @client.bitcasaTree.get(pth.dirname(@bitcasaPath))
     realPath = pth.join(parent, @name)
-    @client.folderTree.delete(realPath)
+    @client.folderTree.remove(realPath)
 
     parentFolder = @client.folderTree.get( parent )
     idx = parentFolder.children.indexOf @name

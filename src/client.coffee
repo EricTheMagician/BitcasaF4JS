@@ -234,7 +234,7 @@ class BitcasaClient
               if res.error.code == 2003
                 parentPath = client.bitcasaTree.get(pth.dirname(path))
                 filePath = pth.join(parentPath,name)
-                client.folderTree.delete(filePath)
+                client.folderTree.remove(filePath)
                 client.ee.emit "downloaded", "file does not exist anymore","#{baseName}-#{chunkStart}", failedArguments
                 return cb("file does not exist anymore", failedArguments)
               if res.error.code == 9006
@@ -436,7 +436,7 @@ class BitcasaClient
           Fiber.yield()
 
         unless client.folderTree.get(key).updated
-          client.folderTree.delete(key)
+          client.folderTree.remove(key)
 
       console.log "folderTree Size After: #{client.folderTree.count()}"
 
