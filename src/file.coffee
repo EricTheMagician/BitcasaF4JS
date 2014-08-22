@@ -51,7 +51,6 @@ class BitcasaFile
           client.downloadTree.set("#{file.bitcasaBasename}-#{cStart}", 1)
           client.download(client, file.bitcasaPath, file.name, cStart,cEnd,file.size,readAhead, ->)
 
-        failedArgs = {buffer: new Buffer 0, start: 0, end: 0}
         cbCalled = false
         _callback = (err, name, data) ->
           if name == "#{file.bitcasaBasename}-#{cStart}" and not cbCalled
