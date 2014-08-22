@@ -372,6 +372,7 @@ class BitcasaClient
             Fiber.yield()
           processing[i] = getFolder(client, folders[i].bitcasaPath,depth )
         wait(processing)
+        apiRateLimit = false
         for i in [0...processing.length]
           client.logger.log "silly", "proccessing[#{i}] out of #{processing.length} -- folders length = #{folders.length}"
           processingError = false
@@ -393,15 +394,18 @@ class BitcasaClient
             client.logger.log "debug", "the bad data was: #{data}"
             processingError = true
             if error.code
-              if error.code == 2002 or error.code == 2001
-                processingError = true
-              else
-                  folders.push(folders[i])
+              if error.code == 9006
+                apiRateLimit == true
 
-            else
-              folders.push(folders[i])
+            folders.push(folders[i])
 
             processingError = true
+
+          if apiRateLimit
+            setTimeout fiberRun, 61000
+            Fiber.yield()
+            folders.splice(0, i)
+
 
           if processingError
             continue
