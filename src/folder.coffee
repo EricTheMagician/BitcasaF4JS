@@ -93,14 +93,14 @@ class BitcasaFolder
           client.bitcasaTree.set o.path, realPath
           keys.push realPath
 
-          if obj = client.folderTree.get( realPath )
+          if ( obj = client.folderTree.get( realPath ) ) and obj instanceof BitcasaFolder
             if obj.mtime.getTime() !=  o.mtime
               obj.mtime = new Date(o.mtime)
             obj.updated = true
           else
             client.folderTree.set( realPath, new BitcasaFolder(client, o.path, o.name, new Date(o.ctime), new Date(o.mtime), [], true) )
         else
-          if obj = client.folderTree.get( realPath )
+          if obj = client.folderTree.get( realPath ) and obj instanceof BitcasaFile
             if obj.mtime.getTime() !=  o.mtime
               obj.mtime = new Date(o.mtime)
             obj.updated = true
