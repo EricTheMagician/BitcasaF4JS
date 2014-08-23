@@ -31,7 +31,7 @@ class BitcasaFile
       parentPath = client.bitcasaTree.get(pth.dirname(file.bitcasaPath))
       filePath = pth.join(parentPath,file.name)
       cache = pth.join(client.cacheLocation,"#{baseName}-#{rStart}-#{rEnd}")
-      unless fs.existsSync(cache)
+      unless exists(cache)
         file.download(rStart,rEnd, false, -> )
 
   download: (start,end, readAhead, cb) ->
@@ -64,6 +64,10 @@ class BitcasaFile
           if not cbCalled
             cbCalled = true
             _download(cStart, cEnd, _cb)
+            client.ee.removeListener 'downloaded', _callback
+            client.downloadTree.remove("#{file.bitcasaBasename}-#{cStart}")
+
+
         setTimeout fn, 120000
       else
         callback = (err, data) ->
