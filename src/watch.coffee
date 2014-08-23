@@ -26,7 +26,7 @@ zip = () ->
     arr[i] for arr in arguments
 
 sortStats = (x,y) ->
-  diff = x[1].atime.getTime() - y[1].atime.getTime()
+  diff = x[1].mtime.getTime() - y[1].mtime.getTime()
   switch
     when diff < 0 then return -1
     when diff == 0 then return 0

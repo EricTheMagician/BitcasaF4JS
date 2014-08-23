@@ -45,7 +45,7 @@ class BitcasaFile
     _download = (cStart, cEnd,_cb) ->
       #wait for event emitting if downloading
       #otherwise, just read the file if it exists
-      exist = fs.existsSync(pth.join(client.downloadLocation, "#{file.bitcasaBasename}-#{Math.floor((cStart)/client.chunkSize) * client.chunkSize}-#{ Math.min( Math.ceil(cEnd/client.chunkSize) * client.chunkSize, file.size)-1}"))
+      exist = exists(pth.join(client.downloadLocation, "#{file.bitcasaBasename}-#{Math.floor((cStart)/client.chunkSize) * client.chunkSize}-#{ Math.min( Math.ceil(cEnd/client.chunkSize) * client.chunkSize, file.size)-1}"))
       unless exist
         unless client.downloadTree.has("#{file.bitcasaBasename}-#{cStart}")
           client.downloadTree.set("#{file.bitcasaBasename}-#{cStart}", 1)
