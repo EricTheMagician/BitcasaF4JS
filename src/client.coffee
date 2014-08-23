@@ -250,14 +250,13 @@ class BitcasaClient
             return cb "data downloaded incorrectSize"
           else
             client.logger.log("debug", "successfully downloaded #{location}")
-            writeFile(location,data).wait()
             args =
               buffer: data,
               start: start - chunkStart,
               end : end+1-chunkStart
             client.ee.emit "downloaded", null,"#{baseName}-#{chunkStart}", args
-            return cb null, args
-
+            cb null, args
+            return writeFile(location,data).wait()
 
         else #for not having enough tokens
           client.logger.log "debug", "downloading file failed: out of tokens"

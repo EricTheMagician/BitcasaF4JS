@@ -12,27 +12,6 @@ class BitcasaFolder
 
   constructor: (@client, @bitcasaPath, @name, @ctime, @mtime, @children, @updated)->
 
-  @parseItems: (client,items) ->
-    keys = []
-    for o in items
-      parent = client.bitcasaTree.get(pth.dirname(o.path))
-      realPath = pth.join(parent,o.name)
-      keys.push realPath
-
-      #add child to parent folder
-      parentFolder = client.folderTree.get parent
-      if o.name not in parentFolder.children
-        parentFolder.children.push o.name
-
-      if o.category == 'folders'
-        # keep track of the conversion of bitcasa path to real path
-        client.bitcasaTree.set o.path, realPath
-        client.folderTree.set( realPath, new BitcasaFolder(client, o.path, o.name, new Date(o.ctime), new Date(o.mtime), [], true) )
-      else
-        client.folderTree.set realPath, new BitcasaFile(client, o.path, o.name,o.size,  new Date(o.ctime), new Date(o.mtime), true)
-    return keys
-
-
   @parseFolder: (client, data, cb) ->
     try
       result = JSON.parse(data)
