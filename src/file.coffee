@@ -87,6 +87,12 @@ class BitcasaFile
 
         #download chunks
         data = download(start,end)
+
+        #only read ahead on certain cases
+        if readAhead
+          BitcasaFile.recursive(client,file, Math.floor(file.size / client.chunkSize) * client.chunkSize, file.size)
+          BitcasaFile.recursive(client,file, chunkStart + i * client.chunkSize, chunkEnd + i * client.chunkSize) for i in [1..client.advancedChunks]
+
         try
           data = data.wait()
         catch error #there might have been a connection error
@@ -96,10 +102,6 @@ class BitcasaFile
           return
         cb( data.buffer, data.start, data.end )
 
-        #only recuse on certain cases
-        if readAhead
-          BitcasaFile.recursive(client,file, Math.floor(file.size / client.chunkSize) * client.chunkSize, file.size)
-          BitcasaFile.recursive(client,file, chunkStart + i * client.chunkSize, chunkEnd + i * client.chunkSize) for i in [1..client.advancedChunks]
 
         client.logger.log "silly", "after downloading - #{data.buffer.length} - #{data.start} - #{data.end}"
       ).run()

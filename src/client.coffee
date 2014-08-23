@@ -194,7 +194,7 @@ class BitcasaClient
         else
           return cb(null,failedArguments)
       else
-        client.logger.log("debug", "#{name} - downloading #{chunkStart}-#{chunkEnd}")
+        client.logger.log("debug", "downloading #{name} - #{chunkStart}-#{chunkEnd}")
         if client.rateLimit.tryRemoveTokens(1)
           client.logger.log "silly", "download requests: #{client.rateLimit.getTokensRemaining()}"
           client.logger.log "silly", "starting to download #{location}"
