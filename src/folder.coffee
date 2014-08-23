@@ -1,5 +1,5 @@
 pth = require 'path'
-
+Fiber = require 'fibers'
 #for mocha testing
 if Object.keys( module.exports ).length == 0
   r = require './file.coffee'
@@ -60,47 +60,57 @@ class BitcasaFolder
       return null
 
     keys = []
-    for o in result.result.items
-      #get real path of parent
-      parent = client.bitcasaTree.get(pth.dirname(o.path))
+    count = 0
+    Fiber ->
+      fiber = Fiber.current
+      fiberRun = ->
+        fiber.run()
+      for o in result.result.items
+        count++
+        if count % 50 == 0
+          setImmediate fiberRun
+          Fiber.yield()
+        #get real path of parent
+        parent = client.bitcasaTree.get(pth.dirname(o.path))
 
-      #if the parent does not exist, skip it
-      if parent == undefined
-        continue
+        #if the parent does not exist, skip it
+        if parent == undefined
+          continue
 
-      realPath = pth.join(parent,o.name)
+        realPath = pth.join(parent,o.name)
 
-      parentFolder = client.folderTree.get parent
-      #if parent is undefined, parse later. sometimes, parent errored out while scanning.
-      if parentFolder == undefined
-        continue
+        parentFolder = client.folderTree.get parent
+        #if parent is undefined, parse later. sometimes, parent errored out while scanning.
+        if parentFolder == undefined
+          continue
 
-      #add child to parent
-      if o.name not in parentFolder.children
-        parentFolder.children.push o.name
+        #add child to parent
+        if o.name not in parentFolder.children
+          parentFolder.children.push o.name
 
-      if o.category == 'folders'
-        # keep track of the conversion of bitcasa path to real path
-        client.bitcasaTree.set o.path, realPath
-        keys.push realPath
+        if o.category == 'folders'
+          # keep track of the conversion of bitcasa path to real path
+          client.bitcasaTree.set o.path, realPath
+          keys.push realPath
 
-        if obj = client.folderTree.get( realPath )
-          if obj.mtime.getTime() !=  o.mtime
-            obj.mtime = new Date(o.mtime)
-          obj.updated = true
+          if obj = client.folderTree.get( realPath )
+            if obj.mtime.getTime() !=  o.mtime
+              obj.mtime = new Date(o.mtime)
+            obj.updated = true
+          else
+            client.folderTree.set( realPath, new BitcasaFolder(client, o.path, o.name, new Date(o.ctime), new Date(o.mtime), [], true) )
         else
-          client.folderTree.set( realPath, new BitcasaFolder(client, o.path, o.name, new Date(o.ctime), new Date(o.mtime), [], true) )
-      else
-        if obj = client.folderTree.get( realPath )
-          if obj.mtime.getTime() !=  o.mtime
-            obj.mtime = new Date(o.mtime)
-          obj.updated = true
-        else
-          client.folderTree.set realPath,    new BitcasaFile(client, o.path, o.name,o.size,  new Date(o.ctime), new Date(o.mtime), true)
+          if obj = client.folderTree.get( realPath )
+            if obj.mtime.getTime() !=  o.mtime
+              obj.mtime = new Date(o.mtime)
+            obj.updated = true
+          else
+            client.folderTree.set realPath,    new BitcasaFile(client, o.path, o.name,o.size,  new Date(o.ctime), new Date(o.mtime), true)
+      _cb = ->
+        cb(null, keys)
+      setImmediate _cb
 
-    _cb = ->
-      cb(null, keys)
-    setImmediate _cb
+    .run()
 
     return null
   getAttr: (cb)->
