@@ -31,13 +31,12 @@ class BitcasaFile
       parentPath = client.bitcasaTree.get(pth.dirname(file.bitcasaPath))
       filePath = pth.join(parentPath,file.name)
       cache = pth.join(client.cacheLocation,"#{baseName}-#{rStart}-#{rEnd}")
-      unless exists(cache)
-        unless client.downloadTree.has("#{file.bitcasaBasename}-#{cStart}")
-          client.downloadTree.set("#{file.bitcasaBasename}-#{cStart}",1)
-          callback = ->
-            client.downloadTree.remove("#{file.bitcasaBasename}-#{cStart}")
-          client.download(client, file.bitcasaPath, file.name, rStart,rEnd, file.maxSize, false, callback)
-        # file.download(rStart,rEnd, false, -> )
+      unless client.downloadTree.has("#{file.bitcasaBasename}-#{rStart}")
+        Fiber ->
+          unless exists(cache).wait()
+            file.download(rStart, rEnd, false, ->)
+        .run()
+
 
   download: (start,end, readAhead, cb) ->
     #check to see if part of the file is being downloaded or in use
@@ -50,33 +49,35 @@ class BitcasaFile
     _download = (cStart, cEnd,_cb) ->
       #wait for event emitting if downloading
       #otherwise, just read the file if it exists
-      exist = exists(pth.join(client.downloadLocation, "#{file.bitcasaBasename}-#{Math.floor((cStart)/client.chunkSize) * client.chunkSize}-#{ Math.min( Math.ceil(cEnd/client.chunkSize) * client.chunkSize, file.size)-1}"))
-      unless exist
-        unless client.downloadTree.has("#{file.bitcasaBasename}-#{cStart}")
-          client.downloadTree.set("#{file.bitcasaBasename}-#{cStart}", 1)
+      Fiber ->
+        exist = exists(pth.join(client.downloadLocation, "#{file.bitcasaBasename}-#{Math.floor((cStart)/client.chunkSize) * client.chunkSize}-#{ Math.min( Math.ceil(cEnd/client.chunkSize) * client.chunkSize, file.size)-1}")).wait()
+        unless exist
+          unless client.downloadTree.has("#{file.bitcasaBasename}-#{cStart}")
+            client.downloadTree.set("#{file.bitcasaBasename}-#{cStart}", 1)
+            fn = ->
+              client.download(client, file.bitcasaPath, file.name, cStart,cEnd,file.size,readAhead, ->)
+            setImmediate fn
+          cbCalled = false
+          _callback = (err, name, data) ->
+            if name == "#{file.bitcasaBasename}-#{cStart}" and not cbCalled
+              cbCalled = true
+              client.downloadTree.remove("#{file.bitcasaBasename}-#{cStart}")
+              client.ee.removeListener 'downloaded', _callback
+
+              return _cb(err, data)
+          client.ee.on "downloaded", _callback
           fn = ->
-            client.download(client, file.bitcasaPath, file.name, cStart,cEnd,file.size,readAhead, ->)
-          setImmediate fn
-        cbCalled = false
-        _callback = (err, name, data) ->
-          if name == "#{file.bitcasaBasename}-#{cStart}" and not cbCalled
-            cbCalled = true
-            client.downloadTree.remove("#{file.bitcasaBasename}-#{cStart}")
-            client.ee.removeListener 'downloaded', _callback
-
-            return _cb(err, data)
-        client.ee.on "downloaded", _callback
-        fn = ->
-          if not cbCalled
-            cbCalled = true
-            _download(cStart, cEnd, _cb)
-            client.ee.removeListener 'downloaded', _callback
-            client.downloadTree.remove("#{file.bitcasaBasename}-#{cStart}")
+            if not cbCalled
+              cbCalled = true
+              _download(cStart, cEnd, _cb)
+              client.ee.removeListener 'downloaded', _callback
+              client.downloadTree.remove("#{file.bitcasaBasename}-#{cStart}")
 
 
-        setTimeout fn, 120000
-      else
-        client.download(client, file.bitcasaPath, file.name, cStart,cEnd,file.size,readAhead,_cb)
+          setTimeout fn, 120000
+        else
+          client.download(client, file.bitcasaPath, file.name, cStart,cEnd,file.size,readAhead,_cb)
+      .run()
 
     download = Future.wrap(_download)
     if nChunks < 1
