@@ -32,7 +32,12 @@ class BitcasaFile
       filePath = pth.join(parentPath,file.name)
       cache = pth.join(client.cacheLocation,"#{baseName}-#{rStart}-#{rEnd}")
       unless exists(cache)
-        file.download(rStart,rEnd, false, -> )
+        unless client.downloadTree.has("#{file.bitcasaBasename}-#{cStart}")
+          client.downloadTree.set("#{file.bitcasaBasename}-#{cStart}",1)
+          callback = ->
+            client.downloadTree.remove("#{file.bitcasaBasename}-#{cStart}")
+          client.download(client, file.bitcasaPath, file.name, rStart,rEnd, file.maxSize, false, callback)
+        # file.download(rStart,rEnd, false, -> )
 
   download: (start,end, readAhead, cb) ->
     #check to see if part of the file is being downloaded or in use
@@ -71,9 +76,6 @@ class BitcasaFile
 
         setTimeout fn, 120000
       else
-        callback = (err, data) ->
-          client.logger.log "debug", "callng callback"
-          _cb(err,data)
         client.download(client, file.bitcasaPath, file.name, cStart,cEnd,file.size,readAhead,_cb)
 
     download = Future.wrap(_download)
