@@ -49,8 +49,9 @@ class BitcasaFile
       unless exist
         unless client.downloadTree.has("#{file.bitcasaBasename}-#{cStart}")
           client.downloadTree.set("#{file.bitcasaBasename}-#{cStart}", 1)
-          client.download(client, file.bitcasaPath, file.name, cStart,cEnd,file.size,readAhead, ->)
-
+          fn = ->
+            client.download(client, file.bitcasaPath, file.name, cStart,cEnd,file.size,readAhead, ->)
+          setImmediate fn
         cbCalled = false
         _callback = (err, name, data) ->
           if name == "#{file.bitcasaBasename}-#{cStart}" and not cbCalled
