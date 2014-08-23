@@ -1,7 +1,7 @@
 BASEURL = 'https://developer.api.bitcasa.com/v1/'
 RateLimiter = require('limiter').RateLimiter
 Client = require('node-rest-client').Client;
-dict = require 'dict'
+hashmap = require( 'hashmap' ).HashMap
 pth = require 'path'
 fs = require 'fs-extra'
 memoize = require 'memoizee'
@@ -10,6 +10,8 @@ Future = require('fibers/future')
 Fiber = require 'fibers'
 wait = Future.wait
 RedBlackTree = require('data-structures').RedBlackTree
+util         = require("util")
+EventEmitter = require("events").EventEmitter
 
 _parseFolder = (client,data, cb)->
   fn = ->
@@ -98,15 +100,15 @@ class BitcasaClient
   constructor: (@id, @secret, @redirectUrl, @logger, @accessToken = null, @chunkSize = 1024*1024, @advancedChunks = 10, @cacheLocation = '/tmp/node-bitcasa') ->
     @rateLimit = new RateLimiter 175, 'minute'
     now = (new Date)
-    root = new BitcasaFolder(@,'/', '', now, now, [])
-    @folderTree = new dict({'/': root})
-    @bitcasaTree = new dict({'/': '/'})
-    @downloadTree = new dict()
-    if @accessToken == null
-      throw new Error "accessToken in the config file cannot be blank"
-    else
-      @setRest()
-
+    root = new BitcasaFolder(@,'/', '', now, now, [], true)
+    @folderTree = new hashmap()
+    @folderTree.set("/", root)
+    @bitcasaTree = new hashmap()
+    @bitcasaTree.set("/", "/")
+    @downloadTree = new hashmap()
+    @setRest()
+    @ee = new EventEmitter()
+    @ee.setMaxListeners(0)
     @downloadLocation = pth.join @cacheLocation, "download"
     @uploadLocation = pth.join @cacheLocation, "upload"
     fs.ensureDirSync(@downloadLocation)
@@ -114,11 +116,9 @@ class BitcasaClient
 
   setRest: ->
     @client = new Client()
-    @client.registerMethod 'getRootFolder', "#{BASEURL}folders/?access_token=#{@accessToken}", "GET"
-    @client.registerMethod 'downloadChunk', "#{BASEURL}files/name.ext?path=${path}&access_token=#{@accessToken}", "GET"
     @client.registerMethod 'getFolder', "#{BASEURL}folders${path}?access_token=#{@accessToken}&depth=${depth}", "GET"
     @client.registerMethod 'getUserProfile', "#{BASEURL}user/profile?access_token=#{@accessToken}", "GET"
-    @client.registerMethod 'deleteFile', "#{BASEURL}files?access_token=#{@accessToken}&path=${path}", "DELETE"
+
   loginUrl: ->
     "#{BASEURL}oauth2/authenticate?client_id=#{@id}&redirect_url=#{@redirectUrl}"
 
@@ -163,9 +163,6 @@ class BitcasaClient
     chunkEnd = Math.min( Math.ceil(end/client.chunkSize) * client.chunkSize, maxSize)-1 #and make sure that it's not bigger than the actual file
 
     chunks = (chunkEnd - chunkStart)/client.chunkSize
-    if chunks > 1 and (maxSize - start) > 65536
-      client.logger.log("debug", "number chunks requested greater than 1 - (start,end) = (#{start}-#{end})")
-      client.logger.log("debug", "number chunks requested greater than 1 - (chunkStart,chunkEnd) = (#{chunkStart}-#{chunkEnd})")
 
     Fiber( ->
       baseName = pth.basename path
@@ -195,52 +192,36 @@ class BitcasaClient
           client.logger.log('silly',"file exists: #{location}--#{buffer.slice(start,end).length}")
           return cb(null,args)
         else
-          cb(null,failedArguments)
+          return cb(null,failedArguments)
       else
         client.logger.log("debug", "#{name} - downloading #{chunkStart}-#{chunkEnd}")
         if client.rateLimit.tryRemoveTokens(1)
-          client.logger.log "debug", "download requests: #{client.rateLimit.getTokensRemaining()}"
-          args =
-            timeout: 360000
-            "path":
-              "path": path
-            headers:
-              Range: "bytes=#{chunkStart}-#{chunkEnd}"
+          client.logger.log "silly", "download requests: #{client.rateLimit.getTokensRemaining()}"
+          client.logger.log "silly", "starting to download #{location}"
 
-          client.logger.log "debug", "starting to download #{location}"
           _download = (_cb) ->
-            #ensure callback is only fired once.
-            cbCalled = false
-            req = client.client.methods.downloadChunk args, (data, response)->
-              if not cbCalled
-                cbCalled = true
-                res = {data:data, response: response, error: null}
-                _cb(null, res)
-
-            req.on 'error', (err) ->
-              if not cbCalled
-                cbCalled = true
-                client.logger.log("error","there was an error downloading: #{err}")
-                _cb(null, {error: "failed downloading"})
-
-            fn = ->
-              if not cbCalled
-                cbCalled = true
-                _cb(null, {error: "taking to long to download a file"})
-            setTimeout fn, 300000
+            rest.get "#{BASEURL}files/name.ext?path=#{path}&access_token=#{client.accessToken}", {
+              decoding: buffer
+              timeout: 300000
+              headers:
+                Range: "bytes=#{chunkStart}-#{chunkEnd}"
+            }
+            .on 'complete', (result, response) ->
+              if result instanceof Error
+                _cb(null, {error: result})
+              else
+                _cb(null, {error:null, data: response.raw, response: response})
 
           download = Future.wrap(_download)
           res = download().wait()
 
           if res.error
-            cb(null,failedArguments)
+            cb(res.error.message,failedArguments)
             return
 
           data = res.data
           response = res.response
 
-          failed = true #assume that the download failed
-          apiLimit = false #assume that the error was not hitting the apiLimit
           client.logger.log("debug", "downloaded: #{location} - #{chunkEnd-chunkStart} -- limit #{client.rateLimit.getTokensRemaining()}")
 
           if not (data instanceof Buffer)
@@ -253,44 +234,35 @@ class BitcasaClient
               if res.error.code == 2003
                 parentPath = client.bitcasaTree.get(pth.dirname(path))
                 filePath = pth.join(parentPath,name)
-                client.folderTree.delete(filePath)
+                client.folderTree.remove(filePath)
+                client.ee.emit "downloaded", "file does not exist anymore","#{baseName}-#{chunkStart}", failedArguments
+                return cb("file does not exist anymore", failedArguments)
               if res.error.code == 9006
-                apiLimit = true
-          else if  data.length < (chunkStart - chunkEnd + 1)
-            client.logger.log("debug", "failed to download #{location} -- #{data.length} - size mismatch")
+                client.ee.emit "downloaded", "api rate limit reached while downloading","#{baseName}-#{chunkStart}", failedArguments
+                return cb "api rate limit reached while downloading", failedArguments
+
+              client.ee.emit "downloaded", "unhandled json error", "#{baseName}-#{chunkStart}", failedArguments
+              return cb "unhandled json error"
+            return cb "unhandled data type while downloading"
+          else if  data.length !=  (chunkEnd - chunkStart + 1)
+            client.logger.log("debug", "failed to download #{location} -- #{data.length} -- #{chunkStart - chunkEnd + 1} -- size mismatch")
+            client.ee.emit "downloaded", "data downloaded incorrectSize", "#{baseName}-#{chunkStart}", failedArguments
+            return cb "data downloaded incorrectSize"
           else
             client.logger.log("debug", "successfully downloaded #{location}")
-            writeFile(location,data)
-            failed = false
-
-
-          if failed and apiLimit #api limit
-            fiber = Fiber.current
-            fiberRun = ->
-              fiber.run()
-              return null
-            setTimeout(fiberRun, 61000)
-            Fiber.yield()
-            cb(null,failedArguments)
-          else if recurse and failed  #let the fs decide what to do.
-            args =
-              buffer: new Buffer(0),
-              start: 0,
-              end : 0
-            cb(null,args)
-          else if (failed) and (not recurse)
-            client.downloadTree.delete("#{baseName}-#{chunkStart}")
-            cb(null, failedArguments)
-          else if not failed
+            writeFile(location,data).wait()
             args =
               buffer: data,
               start: start - chunkStart,
               end : end+1-chunkStart
-            client.downloadTree.delete("#{baseName}-#{chunkStart}")
-            cb(null, args )
+            client.ee.emit "downloaded", null,"#{baseName}-#{chunkStart}", args
+            return cb null, args
+
+
         else #for not having enough tokens
           client.logger.log "debug", "downloading file failed: out of tokens"
-          cb null, failedArguments
+          client.ee.emit "downloaded", "downloading file failed: out of tokens", "#{baseName}-#{chunkStart}", args
+          return cb null, failedArguments
 
 
     ).run()
@@ -336,11 +308,11 @@ class BitcasaClient
             parentFolder.children.push o.name
 
           if o.size
-            client.folderTree.set key, new BitcasaFile(client, o.path, o.name, o.size, new Date(o.ctime), new Date(o.mtime) )
+            client.folderTree.set key, new BitcasaFile(client, o.path, o.name, o.size, new Date(o.ctime), new Date(o.mtime), true )
           else
             # keep track of the conversion of bitcasa path to real path
             client.bitcasaTree.set o.path, realPath
-            client.folderTree.set key, new BitcasaFolder(client, o.path, o.name, new Date(o.ctime), new Date( o.mtime), [])
+            client.folderTree.set key, new BitcasaFolder(client, o.path, o.name, new Date(o.ctime), new Date( o.mtime), [], true)
         if getAll
           client.getAllFolders()
     else
@@ -368,7 +340,6 @@ class BitcasaClient
 
   getAllFolders: ->
     client = @
-    newKeys = new RedBlackTree ['/']
     folders = [client.folderTree.get('/')]
     foldersNextDepth = []
     depth = 1
@@ -379,6 +350,13 @@ class BitcasaClient
         fiber.run()
         return null
       start = new Date()
+      value.updated = false for value in client.folderTree.values()
+      client.folderTree.get('/').updated = true
+
+      #pause for a little after getting all keys
+      setImmediate fiberRun
+      Fiber.yield()
+
       while folders.length > 0
         client.logger.log  "silly", "folders length = #{folders.length}"
         tokens = Math.min(Math.floor(client.rateLimit.getTokensRemaining()/6), folders.length)
@@ -394,6 +372,7 @@ class BitcasaClient
             Fiber.yield()
           processing[i] = getFolder(client, folders[i].bitcasaPath,depth )
         wait(processing)
+        apiRateLimit = false
         for i in [0...processing.length]
           client.logger.log "silly", "proccessing[#{i}] out of #{processing.length} -- folders length = #{folders.length}"
           processingError = false
@@ -415,21 +394,23 @@ class BitcasaClient
             client.logger.log "debug", "the bad data was: #{data}"
             processingError = true
             if error.code
-              if error.code == 2002 or error.code == 2001
-                processingError = true
-              else
-                  folders.push(folders[i])
+              if error.code == 9006
+                apiRateLimit == true
 
-            else
-              folders.push(folders[i])
+            folders.push(folders[i])
 
             processingError = true
+
+          if apiRateLimit
+            setTimeout fiberRun, 61000
+            Fiber.yield()
+            folders.splice(0, i)
+
 
           if processingError
             continue
 
           for key in keys
-            newKeys.add key
             if key.match(/\//g).length  == (oldDepth + depth + 1)
               o = client.folderTree.get key
               if o instanceof BitcasaFolder
@@ -446,28 +427,22 @@ class BitcasaClient
           console.log "new depth is #{depth}"
 
       client.logger.log "debug", "it took #{Math.ceil( ((new Date())-start)/60000)} minutes to update folders"
-      console.log "folderTree Size Before: #{client.folderTree.size}"
-      oldKeys = new Array client.folderTree.size
-      counter = 0
-      client.folderTree.forEach (value,key) ->
-        oldKeys[counter] = key
-        counter++
+      console.log "folderTree Size Before: #{client.folderTree.count()}"
 
       #pause for a little after getting all keys
       setImmediate fiberRun
       Fiber.yield()
-
       counter = 0
-      for key in oldKeys
+      for key in client.folderTree.keys()
         counter++
-        if newKeys.remove(key) == undefined
-          client.folderTree.delete key
-        if counter % 20000 == 0
+        if counter % 1000 == 0
           setImmediate fiberRun
           Fiber.yield()
 
+        unless client.folderTree.get(key).updated
+          client.folderTree.remove(key)
 
-      console.log "folderTree Size After: #{client.folderTree.size}"
+      console.log "folderTree Size After: #{client.folderTree.count()}"
 
       client.saveFolderTree()
 
@@ -564,4 +539,5 @@ Object.defineProperties(BitcasaClient.prototype, memoizeMethods({
 
   , { maxAge: 120000, length: 1 })
 }));
+
 module.exports.client = BitcasaClient

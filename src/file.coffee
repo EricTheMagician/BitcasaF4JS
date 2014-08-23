@@ -4,9 +4,14 @@ Fiber = require 'fibers'
 wait = Future.wait
 fs = require 'fs-extra'
 unlink = Future.wrap(fs.unlink)
+#since fs.exists does not return an error, wrap it using an error
+_exists = (path, cb) ->
+  fs.exists path, (success)->
+    cb(null,success)
+exists = Future.wrap(_exists,1)
 class BitcasaFile
   @fileAttr: 0o100777 #according to filesystem information, the 15th bit is set and the read and write are available for everyone
-  constructor: (@client,@bitcasaPath, @name, @size, @ctime, @mtime) ->
+  constructor: (@client,@bitcasaPath, @name, @size, @ctime, @mtime, @updated) ->
     @bitcasaBasename = pth.basename @bitcasaPath
 
 
@@ -20,22 +25,16 @@ class BitcasaFile
     cb(0,attr)
 
   @recursive:  (client,file,rStart, rEnd) ->
-    fn = ->
-      rEnd = Math.min( Math.ceil(rEnd/client.chunkSize) * client.chunkSize, file.size)-1
-      baseName = pth.basename file.bitcasaPath
-      if (rEnd + 1) <= file.size and rEnd > rStart
-        parentPath = client.bitcasaTree.get(pth.dirname(file.bitcasaPath))
-        filePath = pth.join(parentPath,file.name)
-        cache = pth.join(client.cacheLocation,"#{baseName}-#{rStart}-#{rEnd-1}")
-        unless fs.existsSync(cache)
-          unless client.downloadTree.has("#{baseName}-#{rStart}")
-            client.logger.log("silly", "#{baseName}-#{rStart}-#{rEnd - 1} -- has: #{client.downloadTree.has("#{filePath}-#{rStart}")} - recursing with - (#{rStart}-#{rEnd})")
-            client.downloadTree.set("#{baseName}-#{rStart}",1)
-            _callback = (err, data) ->
-              client.downloadTree.delete("#{baseName}-#{rStart}")
-            client.download(client, file.bitcasaPath, file.name, rStart,rEnd,file.size, false, _callback )
-    setImmediate fn
-  download: (start,end, cb) ->
+    rEnd = Math.min( Math.ceil(rEnd/client.chunkSize) * client.chunkSize, file.size)-1
+    baseName = pth.basename file.bitcasaPath
+    if (rEnd + 1) <= file.size and rEnd > rStart
+      parentPath = client.bitcasaTree.get(pth.dirname(file.bitcasaPath))
+      filePath = pth.join(parentPath,file.name)
+      cache = pth.join(client.cacheLocation,"#{baseName}-#{rStart}-#{rEnd}")
+      unless fs.existsSync(cache)
+        file.download(rStart,rEnd, false, -> )
+
+  download: (start,end, readAhead, cb) ->
     #check to see if part of the file is being downloaded or in use
     file = @
     client = @client
@@ -43,7 +42,36 @@ class BitcasaFile
     end = Math.min(end, file.size-1 )
     chunkEnd = Math.min( Math.ceil(end/client.chunkSize) * client.chunkSize, file.size)-1 #and make sure that it's not bigger than the actual file
     nChunks = (chunkEnd - chunkStart)/client.chunkSize
-    download = Future.wrap(client.download)
+    _download = (cStart, cEnd,_cb) ->
+      #wait for event emitting if downloading
+      #otherwise, just read the file if it exists
+      exist = fs.existsSync(pth.join(client.downloadLocation, "#{file.bitcasaBasename}-#{Math.floor((cStart)/client.chunkSize) * client.chunkSize}-#{ Math.min( Math.ceil(cEnd/client.chunkSize) * client.chunkSize, file.size)-1}"))
+      unless exist
+        unless client.downloadTree.has("#{file.bitcasaBasename}-#{cStart}")
+          client.downloadTree.set("#{file.bitcasaBasename}-#{cStart}", 1)
+          client.download(client, file.bitcasaPath, file.name, cStart,cEnd,file.size,readAhead, ->)
+
+        cbCalled = false
+        _callback = (err, name, data) ->
+          if name == "#{file.bitcasaBasename}-#{cStart}" and not cbCalled
+            cbCalled = true
+            client.downloadTree.remove("#{file.bitcasaBasename}-#{cStart}")
+            client.ee.removeListener 'downloaded', _callback
+
+            return _cb(err, data)
+        client.ee.on "downloaded", _callback
+        fn = ->
+          if not cbCalled
+            cbCalled = true
+            _download(cStart, cEnd, _cb)
+        setTimeout fn, 120000
+      else
+        callback = (err, data) ->
+          client.logger.log "debug", "callng callback"
+          _cb(err,data)
+        client.download(client, file.bitcasaPath, file.name, cStart,cEnd,file.size,readAhead,_cb)
+
+    download = Future.wrap(_download)
     if nChunks < 1
       Fiber( ->
         fiber = Fiber.current
@@ -51,17 +79,10 @@ class BitcasaFile
           fiber.run()
           return null
 
-        while client.downloadTree.has("#{file.bitcasaBasename}-#{chunkStart}")
-          setImmediate fiberRun
-          Fiber.yield()
-        client.downloadTree.set("#{file.bitcasaBasename}-#{chunkStart}", 1)
         client.logger.log "silly", "#{file.name} - (#{start}-#{end})"
 
         #download chunks
-        data = download(client, file.bitcasaPath, file.name, start,end,file.size,true)
-
-        BitcasaFile.recursive(client,file, Math.floor(file.size / client.chunkSize) * client.chunkSize, file.size)
-        BitcasaFile.recursive(client,file, chunkStart + i * client.chunkSize, chunkEnd + i * client.chunkSize) for i in [1..client.advancedChunks]
+        data = download(start,end)
         try
           data = data.wait()
         catch error #there might have been a connection error
@@ -69,8 +90,13 @@ class BitcasaFile
         if data == null
           cb new Buffer(0), 0,0
           return
-        client.downloadTree.delete("#{file.bitcasaBasename}-#{chunkStart}")
         cb( data.buffer, data.start, data.end )
+
+        #only recuse on certain cases
+        if readAhead
+          BitcasaFile.recursive(client,file, Math.floor(file.size / client.chunkSize) * client.chunkSize, file.size)
+          BitcasaFile.recursive(client,file, chunkStart + i * client.chunkSize, chunkEnd + i * client.chunkSize) for i in [1..client.advancedChunks]
+
         client.logger.log "silly", "after downloading - #{data.buffer.length} - #{data.start} - #{data.end}"
       ).run()
     else if nChunks < 2
@@ -79,33 +105,18 @@ class BitcasaFile
 
       Fiber( ->
         fiber = Fiber.current
-        fiberRun = ->
-          fiber.run()
-          return null
-
-        while client.downloadTree.has("#{file.bitcasaBasename}-#{chunkStart}")
-          setImmediate fiberRun
-          Fiber.yield()
-        data1 = download(client, file.bitcasaPath, file.name, start, end1,file.size, true)
-        client.downloadTree.set("#{file.bitcasaBasename}-#{chunkStart}", 1)
-
-        while client.downloadTree.has("#{file.bitcasaBasename}-#{chunkStart+client.chunkSize}")
-          setImmediate fiberRun
-          Fiber.yield()
-        data2 = download(client, file.bitcasaPath, file.name, start2, end,file.size, true)
-        client.downloadTree.set("#{file.bitcasaBasename}-#{chunkStart+client.chunkSize}", 1)
+        data1 = download( start, end1)
+        data2 = download( start2, end)
 
         try #check that data1 does not have any connection error
           data1 = data1.wait()
         catch error
           data1 = null
-        client.downloadTree.delete("#{file.bitcasaBasename}-#{chunkStart}")
 
         try #check that data1 does not have any connection error
           data2 = data2.wait()
         catch
           data2 = null
-        client.downloadTree.delete("#{file.bitcasaBasename}-#{chunkStart+client.chunkSize}", 1)
 
         if data1 == null or data1.buffer.length == 0
           cb( new Buffer(0), 0, 0)
@@ -146,7 +157,7 @@ class BitcasaFile
     .run()
     parent = @client.bitcasaTree.get(pth.dirname(@bitcasaPath))
     realPath = pth.join(parent, @name)
-    @client.folderTree.delete(realPath)
+    @client.folderTree.remove(realPath)
 
     parentFolder = @client.folderTree.get( parent )
     idx = parentFolder.children.indexOf @name

@@ -10,7 +10,7 @@ else
 class BitcasaFolder
   @folderAttr = 0o40777 ##according to filesystem information, the 14th bit is set and the read and write are available for everyone
 
-  constructor: (@client, @bitcasaPath, @name, @ctime, @mtime, @children = [])->
+  constructor: (@client, @bitcasaPath, @name, @ctime, @mtime, @children, @updated)->
 
   @parseItems: (client,items) ->
     keys = []
@@ -27,9 +27,9 @@ class BitcasaFolder
       if o.category == 'folders'
         # keep track of the conversion of bitcasa path to real path
         client.bitcasaTree.set o.path, realPath
-        client.folderTree.set( realPath, new BitcasaFolder(client, o.path, o.name, new Date(o.ctime), new Date(o.mtime), []) )
+        client.folderTree.set( realPath, new BitcasaFolder(client, o.path, o.name, new Date(o.ctime), new Date(o.mtime), [], true) )
       else
-        client.folderTree.set realPath, new BitcasaFile(client, o.path, o.name,o.size,  new Date(o.ctime), new Date(o.mtime))
+        client.folderTree.set realPath, new BitcasaFile(client, o.path, o.name,o.size,  new Date(o.ctime), new Date(o.mtime), true)
     return keys
 
 
@@ -49,12 +49,9 @@ class BitcasaFolder
       breakLoop = false
       switch result.error.code
         when 2001
-          parent = client.bitcasaTree.get(pth.dirname(o.path))
-          realPath = pth.join(parent,folders[i].name)
+          client.logger.log "debug", "manifest does not exist"
         when 2002 #folder does not exist
-          parent = client.bitcasaTree.get(pth.dirname(o.path))
-          realPath = pth.join(parent,folders[i].name)
-          client.folderTree.delete(realPath)
+          client.logger.log "debug", "folder does not exist anymore"
         when 9006
           client.logger.log "debug", "api rate limit reached while getting folders"
         else
@@ -72,7 +69,6 @@ class BitcasaFolder
         continue
 
       realPath = pth.join(parent,o.name)
-      keys.push realPath
 
       parentFolder = client.folderTree.get parent
       #if parent is undefined, parse later. sometimes, parent errored out while scanning.
@@ -86,13 +82,21 @@ class BitcasaFolder
       if o.category == 'folders'
         # keep track of the conversion of bitcasa path to real path
         client.bitcasaTree.set o.path, realPath
-        existingFolder = client.folderTree.get(realPath)
-        children = []
-        if existingFolder != undefined
-          children = existingFolder.children
-        client.folderTree.set( realPath, new BitcasaFolder(client, o.path, o.name, new Date(o.ctime), new Date(o.mtime), children) )
+        keys.push realPath
+
+        if obj = client.folderTree.get( realPath )
+          if obj.mtime.getTime() !=  o.mtime
+            obj.mtime = new Date(o.mtime)
+          obj.updated = true
+        else
+          client.folderTree.set( realPath, new BitcasaFolder(client, o.path, o.name, new Date(o.ctime), new Date(o.mtime), [], true) )
       else
-        client.folderTree.set realPath,    new BitcasaFile(client, o.path, o.name,o.size,  new Date(o.ctime), new Date(o.mtime))
+        if obj = client.folderTree.get( realPath )
+          if obj.mtime.getTime() !=  o.mtime
+            obj.mtime = new Date(o.mtime)
+          obj.updated = true
+        else
+          client.folderTree.set realPath,    new BitcasaFile(client, o.path, o.name,o.size,  new Date(o.ctime), new Date(o.mtime), true)
 
     _cb = ->
       cb(null, keys)
@@ -149,8 +153,8 @@ class BitcasaFolder
       if err
         return cb err
       realPath = client.bitcasaTree.get folder.bitcasaPath
-      client.bitcasaTree.delete folder.bitcasaPath
-      client.folderTree.delete realPath
+      client.bitcasaTree.remove folder.bitcasaPath
+      client.folderTree.remove realPath
 
       parentFolder = client.folderTree.get pth.dirname realPath
       idx = parentFolder.children.indexOf folder.name

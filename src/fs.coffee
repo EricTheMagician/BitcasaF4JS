@@ -96,7 +96,7 @@ read = (path, offset, len, buf, fh, cb) ->
 
       #make sure the offset request is not bigger than the file itself
       if offset < file.size
-        file.download(offset, offset+len-1,callback)
+        file.download(offset, offset+len-1,true,callback)
       else
         cb(-errnoMap.ESPIPE)
     else
