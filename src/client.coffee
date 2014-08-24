@@ -68,7 +68,7 @@ _getFolder = (client, path, depth, cb) ->
     path:
       path: path
       depth: depth
-      timeout: 120000
+      timeout: 90000
   returned = false
 
   #if not done after 5 minutes, we have a problem
@@ -76,7 +76,7 @@ _getFolder = (client, path, depth, cb) ->
     if not returned
       returned = true
       cb("taking too long to getFolder")
-  timeout = setTimeout callback, 300000
+  timeout = setTimeout callback, 90000
 
   req = client.client.methods.getFolder args, (data, response) ->
     if not returned
@@ -254,9 +254,10 @@ class BitcasaClient
               buffer: data,
               start: start - chunkStart,
               end : end+1-chunkStart
+            
+            writeFile(location,data).wait()
             client.ee.emit "downloaded", null,"#{baseName}-#{chunkStart}", args
             cb null, args
-            return writeFile(location,data).wait()
 
         else #for not having enough tokens
           client.logger.log "debug", "downloading file failed: out of tokens"

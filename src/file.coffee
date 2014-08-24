@@ -58,14 +58,6 @@ class BitcasaFile
               client.download(client, file.bitcasaPath, file.name, cStart,cEnd,file.size,readAhead, ->)
             setImmediate fn
           cbCalled = false
-          _callback = (err, name, data) ->
-            if name == "#{file.bitcasaBasename}-#{cStart}" and not cbCalled
-              cbCalled = true
-              client.downloadTree.remove("#{file.bitcasaBasename}-#{cStart}")
-              client.ee.removeListener 'downloaded', _callback
-
-              return _cb(err, data)
-          client.ee.on "downloaded", _callback
           fn = ->
             if not cbCalled
               cbCalled = true
@@ -74,7 +66,16 @@ class BitcasaFile
               client.downloadTree.remove("#{file.bitcasaBasename}-#{cStart}")
 
 
-          setTimeout fn, 120000
+          to = setTimeout fn, 120000
+
+          _callback = (err, name, data) ->
+            if name == "#{file.bitcasaBasename}-#{cStart}" and not cbCalled
+              cbCalled = true
+              client.downloadTree.remove("#{file.bitcasaBasename}-#{cStart}")
+              client.ee.removeListener 'downloaded', _callback
+              clearTimeout to
+              return _cb(err, data)
+          client.ee.on "downloaded", _callback
         else
           client.download(client, file.bitcasaPath, file.name, cStart,cEnd,file.size,readAhead,_cb)
       .run()
