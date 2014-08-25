@@ -34,7 +34,10 @@ class BitcasaFile
       unless client.downloadTree.has("#{file.bitcasaBasename}-#{rStart}")
         Fiber ->
           unless exists(cache).wait()
-            file.download(rStart, rEnd, false, ->)
+            _callback = ->
+              client.downloadTree.remove("#{file.bitcasaBasename}-#{rStart}")
+            client.downloadTree.set("#{file.bitcasaBasename}-#{rStart}",1)          
+            client.download(client, file.bitcasaPath, file.name, rStart,rEnd,file.size, false , _callback)
         .run()
 
 
