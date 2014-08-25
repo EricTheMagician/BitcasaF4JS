@@ -31,14 +31,16 @@ class BitcasaFile
       parentPath = client.bitcasaTree.get(pth.dirname(file.bitcasaPath))
       filePath = pth.join(parentPath,file.name)
       cache = pth.join(client.cacheLocation,"#{baseName}-#{rStart}-#{rEnd}")
-      unless client.downloadTree.has("#{file.bitcasaBasename}-#{rStart}")
-        Fiber ->
-          unless exists(cache).wait()
+      Fiber ->
+        unless exists(cache).wait()
+          unless client.downloadTree.has("#{file.bitcasaBasename}-#{rStart}")
+            client.downloadTree.set("#{file.bitcasaBasename}-#{rStart}",1)
             _callback = ->
               client.downloadTree.remove("#{file.bitcasaBasename}-#{rStart}")
-            client.downloadTree.set("#{file.bitcasaBasename}-#{rStart}",1)          
-            client.download(client, file.bitcasaPath, file.name, rStart,rEnd,file.size, false , _callback)
-        .run()
+            _fn = ->
+              client.download(client, file.bitcasaPath, file.name, rStart,rEnd,file.size, false , _callback)
+            setImmediate _fn
+      .run()
 
 
   download: (start,end, readAhead, cb) ->
