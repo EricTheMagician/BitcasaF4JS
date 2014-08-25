@@ -34,6 +34,11 @@ class BitcasaFolder
       fiber = Fiber.current
       fiberRun = ->
         fiber.run()
+
+      unless result.result
+        cb "items is undefined"
+        return null
+
       for o in result.result.items
         count++
         if count % 50 == 0
