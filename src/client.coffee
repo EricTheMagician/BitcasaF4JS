@@ -64,13 +64,6 @@ detectFile = Future.wrap(f)
 
 #wrap get folder
 _getFolder = (client, path, depth, cb) ->
-  args =
-    path:
-      path: path
-      depth: depth
-      timeout: 90000
-  returned = false
-
   #if not done after 5 minutes, we have a problem
   callback = ->
     if not returned
@@ -78,17 +71,18 @@ _getFolder = (client, path, depth, cb) ->
       cb("taking too long to getFolder")
   timeout = setTimeout callback, 90000
 
-  req = client.client.methods.getFolder args, (data, response) ->
-    if not returned
-      returned = true
-      clearTimeout timeout
-      cb(null, data)
+  rest.get "#{BASEURL}folders#{path}?access_token=#{client.accessToken}&depth=#{depth}", {
+    timeout: 90000
+  }
+  .on 'complete', (result, response) ->
+    returned = true
+    clearTimeout timeout
+    if result instanceof Error
+      cb(result)
+    else
+      cb(null, result)
 
-  req.on 'error', (err) ->
-    if not returned
-      returned = true
-      clearTimeout timeout
-      cb(err)
+
 
 
 getFolder = Future.wrap(_getFolder)
@@ -201,7 +195,7 @@ class BitcasaClient
 
           _download = (_cb) ->
             rest.get "#{BASEURL}files/name.ext?path=#{path}&access_token=#{client.accessToken}", {
-              decoding: buffer
+              decoding: "buffer"
               timeout: 300000
               headers:
                 Range: "bytes=#{chunkStart}-#{chunkEnd}"
@@ -254,7 +248,7 @@ class BitcasaClient
               buffer: data,
               start: start - chunkStart,
               end : end+1-chunkStart
-            
+
             writeFile(location,data).wait()
             client.ee.emit "downloaded", null,"#{baseName}-#{chunkStart}", args
             cb null, args
@@ -379,11 +373,11 @@ class BitcasaClient
           try #catch socket connection error
             data = processing[i].wait()
           catch error
-            client.logger.log("error", "there was a problem with connection for folder #{folders[i].name} - #{error}")
+            client.logger.log("error", "there was a problem with getting data for folder #{folders[i].name} - #{error}")
+            folders.push(folders[i])
             processingError = true
 
           if processingError
-            folders.push(folders[i])
             continue
 
 

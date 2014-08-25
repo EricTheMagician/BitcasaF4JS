@@ -12,17 +12,7 @@ class BitcasaFolder
 
   constructor: (@client, @bitcasaPath, @name, @ctime, @mtime, @children, @updated)->
 
-  @parseFolder: (client, data, cb) ->
-    try
-      result = JSON.parse(data)
-    catch error
-      client.logger.log "error", "there was a problem parsing folder  - #{error} - folders length"
-      client.logger.log "debug", "the bad data was: #{data}"
-      processingError = true
-      cb(error)
-
-    if processingError
-      return null
+  @parseFolder: (client, result, cb) ->
 
     if result.error
       breakLoop = false
