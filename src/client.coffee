@@ -65,22 +65,24 @@ detectFile = Future.wrap(f)
 #wrap get folder
 _getFolder = (client, path, depth, cb) ->
   #if not done after 5 minutes, we have a problem
+  returned = false
   callback = ->
-    if not returned
+    unless returned
       returned = true
       cb("taking too long to getFolder")
-  timeout = setTimeout callback, 90000
+  timeout = setTimeout callback, 120000
 
   rest.get "#{BASEURL}folders#{path}?access_token=#{client.accessToken}&depth=#{depth}", {
     timeout: 90000
   }
   .on 'complete', (result, response) ->
-    returned = true
-    clearTimeout timeout
-    if result instanceof Error
-      cb(result)
-    else
-      cb(null, result)
+    unless returned
+      returned = true
+      clearTimeout timeout
+      if result instanceof Error
+        cb(result)
+      else
+        cb(null, result)
 
 
 
