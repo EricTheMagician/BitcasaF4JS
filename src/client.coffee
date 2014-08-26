@@ -196,6 +196,7 @@ class BitcasaClient
           client.logger.log "silly", "starting to download #{location}"
 
           _download = (_cb) ->
+            called = false
             rest.get "#{BASEURL}files/name.ext?path=#{path}&access_token=#{client.accessToken}", {
               decoding: "buffer"
               timeout: 300000
@@ -203,10 +204,12 @@ class BitcasaClient
                 Range: "bytes=#{chunkStart}-#{chunkEnd}"
             }
             .on 'complete', (result, response) ->
-              if result instanceof Error
-                _cb(null, {error: result})
-              else
-                _cb(null, {error:null, data: response.raw, response: response})
+              unless called
+                called = true
+                if result instanceof Error
+                    _cb(null, {error: result})
+                else
+                    _cb(null, {error:null, data: response.raw, response: response})
 
           download = Future.wrap(_download)
           res = download().wait()
