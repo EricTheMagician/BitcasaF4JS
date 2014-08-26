@@ -20,8 +20,8 @@ class BitcasaFile
       mode: BitcasaFile.fileAttr,
       size: @size,
       nlink: 1,
-      mtime: @mtime,
-      ctime: @ctime
+      mtime: new Date(@mtime),
+      ctime: new Date(@ctime)
     cb(0,attr)
 
   @recursive:  (client,file,rStart, rEnd) ->

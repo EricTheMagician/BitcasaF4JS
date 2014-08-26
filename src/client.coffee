@@ -95,7 +95,7 @@ existsMemoized = memoize(fs.existsSync, {maxAge:5000})
 class BitcasaClient
   constructor: (@id, @secret, @redirectUrl, @logger, @accessToken = null, @chunkSize = 1024*1024, @advancedChunks = 10, @cacheLocation = '/tmp/node-bitcasa') ->
     @rateLimit = new RateLimiter 175, 'minute'
-    now = (new Date)
+    now = (new Date).getTime()
     root = new BitcasaFolder(@,'/', '', now, now, [], true)
     @folderTree = new hashmap()
     @folderTree.set("/", root)
@@ -304,11 +304,11 @@ class BitcasaClient
             parentFolder.children.push o.name
 
           if o.size
-            client.folderTree.set key, new BitcasaFile(client, o.path, o.name, o.size, new Date(o.ctime), new Date(o.mtime), true )
+            client.folderTree.set key, new BitcasaFile(client, o.path, o.name, o.size, o.ctime, o.mtime, true )
           else
             # keep track of the conversion of bitcasa path to real path
             client.bitcasaTree.set o.path, realPath
-            client.folderTree.set key, new BitcasaFolder(client, o.path, o.name, new Date(o.ctime), new Date( o.mtime), [], true)
+            client.folderTree.set key, new BitcasaFolder(client, o.path, o.name, o.ctime, o.mtime, [], true)
         if getAll
           client.getAllFolders()
     else
@@ -321,8 +321,8 @@ class BitcasaClient
     client.folderTree.forEach (value, key) ->
       toSave[key] =
         name: value.name
-        mtime: value.mtime.getTime()
-        ctime: value.ctime.getTime()
+        mtime: value.mtime
+        ctime: value.ctime
         path: value.bitcasaPath
 
       if value instanceof BitcasaFile

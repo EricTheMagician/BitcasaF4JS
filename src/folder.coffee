@@ -68,18 +68,18 @@ class BitcasaFolder
           keys.push realPath
 
           if ( obj = client.folderTree.get( realPath ) ) and obj instanceof BitcasaFolder
-            if obj.mtime.getTime() !=  o.mtime
-              obj.mtime = new Date(o.mtime)
+            if obj.mtime !=  o.mtime
+              obj.mtime = o.mtime
             obj.updated = true
           else
-            client.folderTree.set( realPath, new BitcasaFolder(client, o.path, o.name, new Date(o.ctime), new Date(o.mtime), [], true) )
+            client.folderTree.set( realPath, new BitcasaFolder(client, o.path, o.name, o.ctime, o.mtime, [], true) )
         else
           if obj = client.folderTree.get( realPath ) and obj instanceof BitcasaFile
-            if obj.mtime.getTime() !=  o.mtime
-              obj.mtime = new Date(o.mtime)
+            if obj.mtime  o.mtime
+              obj.mtime = o.mtime
             obj.updated = true
           else
-            client.folderTree.set realPath,    new BitcasaFile(client, o.path, o.name,o.size,  new Date(o.ctime), new Date(o.mtime), true)
+            client.folderTree.set realPath,    new BitcasaFile(client, o.path, o.name,o.size,  o.ctime, o.mtime, true)
       _cb = ->
         cb(null, keys)
       setImmediate _cb
@@ -92,8 +92,8 @@ class BitcasaFolder
       mode: BitcasaFolder.folderAttr,
       size: 4096 #standard size of a directory
       nlink: @children.length + 1,
-      mtime: @mtime,
-      ctime: @ctime
+      mtime: new Date(@mtime),
+      ctime: new Date(@ctime)
     cb(0,attr)
 
   uploadFile: (filePath, cb) ->
@@ -107,7 +107,7 @@ class BitcasaFolder
     callback = (err, arg)->
       if err
         return cb err
-      client.folderTree.set newPath, new BitcasaFile(client, arg.path, arg.name, arg.size, new Date(arg.ctime), new Date(arg.mtime) )
+      client.folderTree.set newPath, new BitcasaFile(client, arg.path, arg.name, arg.size, arg.ctime, arg.mtime )
       if filename not in folder.children
         folder.children.push filename
       cb null, arg
@@ -121,7 +121,7 @@ class BitcasaFolder
       if err
         cb err
       else
-        client.folderTree.set newPath, new BitcasaFolder(client, args.path, args.name, new Date( args.ctime), new Date( args.mtime) , [])
+        client.folderTree.set newPath, new BitcasaFolder(client, args.path, args.name,  args.ctime, args.mtime , [])
         client.bitcasaTree.set args.path, newPath
         folder.children.push name
         cb null, args
