@@ -161,10 +161,6 @@ readdir = (path, cb) ->
     else if object instanceof BitcasaFolder
       err = 0
       names = object.children
-      if names.length == 0
-        fn = ->
-          client.getFolders( path, -> )
-        setTimeout(fn, 50)
     else
       err = -errnoMap.ENOENT
   else

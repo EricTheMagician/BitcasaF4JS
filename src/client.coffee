@@ -512,28 +512,4 @@ class BitcasaClient
           # client.folderTree.set realPath, new BitcasaFolder client, o.path, o.name, o.ctime, o.mtime, []
           cb null, result
 
-
-
-
-
-Object.defineProperties(BitcasaClient.prototype, memoizeMethods({
-  getFolders: d( (path,cb)->
-    client = @
-    object = client.folderTree.get(path)
-    if object instanceof BitcasaFolder
-      client.logger.log "silly", "requests: #{client.rateLimit.getTokensRemaining()}"
-      if @rateLimit.tryRemoveTokens(1)
-        callback = (data,response) ->
-          BitcasaFolder.parseFolder( client, data, cb)
-          return null
-        depth = 1
-        client.logger.log("debug", "getting folder info from bitcasa for #{path} -- depth #{depth}")
-        url = "#{BASEURL}/folders#{object.bitcasaPath}?access_token=#{client.accessToken}&depth=#{depth}"
-        client.client.get(url, callback)
-      else
-        client.logger.log "debug", "remaining requests too low: #{client.rateLimit.getTokensRemaining()}"
-
-  , { maxAge: 120000, length: 1 })
-}));
-
 module.exports.client = BitcasaClient
