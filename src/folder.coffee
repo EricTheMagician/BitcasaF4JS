@@ -25,7 +25,7 @@ class BitcasaFolder
           client.logger.log "debug", "api rate limit reached while getting folders"
         else
           client.logger.log "error", "there was an error getting folder: #{result.error.code} - #{result.error.message}"
-      cb(result.error)
+      cb( new Error(result.error.message) )
       return null
 
     keys = []
@@ -62,19 +62,20 @@ class BitcasaFolder
         if o.name not in parentFolder.children
           parentFolder.children.push o.name
 
+        obj = client.folderTree.get( realPath )
         if o.category == 'folders'
           # keep track of the conversion of bitcasa path to real path
           client.bitcasaTree.set o.path, realPath
           keys.push realPath
 
-          if ( obj = client.folderTree.get( realPath ) ) and obj instanceof BitcasaFolder
+          if obj instanceof BitcasaFolder
             if obj.mtime !=  o.mtime
               obj.mtime = o.mtime
             obj.updated = true
           else
             client.folderTree.set( realPath, new BitcasaFolder(client, o.path, o.name, o.ctime, o.mtime, [], true) )
         else
-          if obj = client.folderTree.get( realPath ) and obj instanceof BitcasaFile
+          if obj instanceof BitcasaFile
             if obj.mtime  o.mtime
               obj.mtime = o.mtime
             obj.updated = true
