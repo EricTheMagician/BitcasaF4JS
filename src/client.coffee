@@ -383,6 +383,8 @@ class BitcasaClient
             processingError = true
 
           if processingError
+            setImmediate fiberRun
+            Fiber.yield()
             continue
 
 
@@ -404,9 +406,12 @@ class BitcasaClient
             setTimeout fiberRun, 61000
             Fiber.yield()
             folders.splice(0, i)
+            break
 
 
           if processingError
+            setImmediate fiberRun
+            Fiber.yield()
             continue
 
           for key in keys
