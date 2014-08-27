@@ -51,7 +51,6 @@ errnoMap =
 
 
 getattr = (path, cb) ->
-  logger.log('silly', "getattr #{path}")
   if client.folderTree.has(path)
     callback = (status, attr)->
       cb(status, attr)
