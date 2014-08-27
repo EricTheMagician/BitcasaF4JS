@@ -45,8 +45,9 @@ class BitcasaFolder
           setImmediate fiberRun
           Fiber.yield()
         #get real path of parent
+        unless o
+          continue
         parent = client.bitcasaTree.get(pth.dirname(o.path))
-
         #if the parent does not exist, skip it
         if parent == undefined
           continue
