@@ -420,6 +420,10 @@ class BitcasaClient
               if o instanceof BitcasaFolder
                 foldersNextDepth.push o
 
+          setImmediate fiberRun
+          Fiber.yield()
+
+
         folders.splice 0, processing.length
         console.log "length of folders after splicing: #{folders.length}"
         if folders.length == 0 and foldersNextDepth.length > 0
@@ -429,6 +433,9 @@ class BitcasaClient
           depth = folders[0].bitcasaPath.match(/\//g).length
           console.log "length of folders of nextDepth #{folders.length}"
           console.log "new depth is #{depth}"
+          setImmediate fiberRun
+          Fiber.yield()
+
 
       client.logger.log "debug", "it took #{Math.ceil( ((new Date())-start)/60000)} minutes to update folders"
       console.log "folderTree Size Before: #{client.folderTree.count()}"
