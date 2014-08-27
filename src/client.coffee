@@ -297,6 +297,9 @@ class BitcasaClient
           o = data[key]
 
           #get real path of parent
+          unless client.bitcasaTree.has(pth.dirname(o.path))
+            continue
+
           parent = client.bitcasaTree.get(pth.dirname(o.path))
           realPath = pth.join(parent,o.name)
 
