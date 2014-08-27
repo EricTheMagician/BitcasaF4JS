@@ -25,7 +25,7 @@ class BitcasaFolder
           client.logger.log "debug", "api rate limit reached while getting folders"
         else
           client.logger.log "error", "there was an error getting folder: #{result.error.code} - #{result.error.message}"
-      cb( new Error(result.error.message) )
+      cb( new Error(result.error.code) )
       return null
 
     keys = []
