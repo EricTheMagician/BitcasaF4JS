@@ -254,9 +254,9 @@ class BitcasaClient
               start: start - chunkStart,
               end : end+1-chunkStart
 
-            writeFile(location,data).wait()
             client.ee.emit "downloaded", null,"#{baseName}-#{chunkStart}", args
             cb null, args
+            return writeFile(location,data).wait()
 
         else #for not having enough tokens
           client.logger.log "debug", "downloading file failed: out of tokens"
@@ -297,6 +297,9 @@ class BitcasaClient
           o = data[key]
 
           #get real path of parent
+          unless client.bitcasaTree.has(pth.dirname(o.path))
+            continue
+
           parent = client.bitcasaTree.get(pth.dirname(o.path))
           realPath = pth.join(parent,o.name)
 
