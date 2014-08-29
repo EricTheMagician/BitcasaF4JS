@@ -1,5 +1,38 @@
+###
+this program takes in one command line argument and that's the server number
+###
+
+fs = require 'fs-extra'
+Future = require('fibers/future')
+Fiber = require 'fibers'
+wait = Future.wait
+ipc = require 'node-ipc'
+BitcasaClient = module.exports.client
+config = require('./config.json')
+pth = require 'path'
+
+ipc.config =
+  appspace        : 'bitcasaf4js.',
+  socketRoot      : '/tmp/',
+  id              : "download#{process.argv[2]}",
+  networkHost     : 'localhost',
+  networkPort     : 8000,
+  encoding        : 'utf8',
+  silent          : false,
+  maxConnections  : 100,
+  retry           : 500,
+  maxRetries      : 5,
+  stopRetrying    : false
+
+logger = new (winston.Logger)({
+    transports: [
+      new (winston.transports.Console)({ level: 'info' }),
+      new (winston.transports.File)({ filename: '/tmp/BitcasaF4JS.log', level:'debug' })
+    ]
+  })
 client = new BitcasaClient(config.clientId, config.secret, config.redirectUrl, logger, config.accessToken, config.chunkSize, config.advancedChunks, config.cacheLocation)
-download = (client, path, name, start,end,maxSize, recurse, cb ) ->
+
+download = (path, name, start,end,maxSize, recurse, cb ) ->
   Fiber( ->
     baseName = pth.basename path
     #save location
@@ -105,3 +138,10 @@ download = (client, path, name, start,end,maxSize, recurse, cb ) ->
 
 
   ).run()
+
+ipc.serve ->
+  ipc.server.on 'download', (inData, socket) ->
+    callback = (err, data) ->
+      Object.extend(data, inData)
+      ipc.server.emit 'downloaded', data
+    download( inData.path,  inData.name,  inData.start, inData.end, inData.maxSize,  inData.recurse, callback )

@@ -9,13 +9,12 @@ Future = require('fibers/future')
 Fiber = require 'fibers'
 wait = Future.wait
 RedBlackTree = require('data-structures').RedBlackTree
-util         = require("util")
 EventEmitter = require("events").EventEmitter
 
 ipc = require 'node-ipc'
 
 ipc.config =
-  appspace        : 'app.',
+  appspace        : 'bitcasaf4js.',
   socketRoot      : '/tmp/',
   id              : "client",
   networkHost     : 'localhost',
