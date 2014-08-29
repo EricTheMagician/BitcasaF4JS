@@ -16,7 +16,6 @@
   "homepage": "https://github.com/thejinx0r/BitcasaF4JS",
   "dependencies": {
     "coffee-script": "~1.7.1",
-    "d": "~0.1.1",
     "fibers": "^1.0.1",
     "fs-extra": "^0.10.0",
     "fuse4js": "~0.1.9",

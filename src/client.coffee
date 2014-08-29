@@ -5,7 +5,6 @@ hashmap = require( 'hashmap' ).HashMap
 pth = require 'path'
 fs = require 'fs-extra'
 memoize = require 'memoizee'
-d = require('d');
 Future = require('fibers/future')
 Fiber = require 'fibers'
 wait = Future.wait
