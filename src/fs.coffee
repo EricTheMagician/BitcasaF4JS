@@ -75,7 +75,6 @@ chmod = (path,mod, cb) ->
 #  *     A positive value represents the number of bytes actually read.
 #  */
 read = (path, offset, len, buf, fh, cb) ->
-  logger.log('silly', "reading file #{path} - (#{offset}-#{offset+len-1})")
   folderTree =  client.folderTree
   if folderTree.has(path)
     chunkStart = Math.floor((offset)/client.chunkSize) * client.chunkSize
@@ -83,7 +82,6 @@ read = (path, offset, len, buf, fh, cb) ->
       try
         dataBuf.copy(buf,0,dataStart,dataEnd);
         p = "#{file.bitcasaBasename}-#{chunkStart}"
-        client.logger.log "silly", "logging from read callback #{dataEnd-dataStart} -- #{  client.downloadTree.has(p)}"
         return cb(dataEnd-dataStart);
       catch error
         client.logger.log( "error", "failed reading:", error)
@@ -113,14 +111,12 @@ init = (cb) ->
 open = (path, flags, cb) ->
   err = 0 # assume success
   folderTree =  client.folderTree
-  logger.log('silly', "opening file #{path}, #{flags},  exists #{folderTree.has(path)}")
   if folderTree.has(path)
     return cb(0,null)
   else
     return cb(-errnoMap.ENOENT)# // we don't return a file handle, so fuse4js will initialize it to 0
 
 flush = (buf, cb) ->
-  logger.log("silly", "#{typeof buf}")
   return cb(0)
 
 release =  (path, fh, cb) ->
@@ -149,7 +145,6 @@ statfs= (cb) ->
 #  *     and names is the result in the form of an array of file names (when err === 0).
 #  */
 readdir = (path, cb) ->
-  logger.log('silly', "reading dir #{path}")
   folderTree =  client.folderTree
   names = []
 
