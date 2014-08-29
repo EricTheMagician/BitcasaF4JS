@@ -45,7 +45,6 @@ _unlink = (path, cb) ->
 unlink = Future.wrap(_unlink)
 locked = false
 watcher = fs.watch downloadLocation, (event, filename) ->
-  logger.log("silly", "Watcher: event #{event} triggered by #{filename} - status: #{locked} - #{not locked}")
   if locked == false
     locked = true
     Fiber( ()->
