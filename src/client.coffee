@@ -193,7 +193,7 @@ class BitcasaClient
           client.ee.emit "downloaded", null, "#{baseName}-#{chunkStart}", args
           return cb(null,args)
         else
-          client.ee.emit "downloaded", null, "#{baseName}-#{chunkStart}", failedArguments  
+          client.ee.emit "downloaded", null, "#{baseName}-#{chunkStart}", failedArguments
           return cb(null,failedArguments)
       else
         client.logger.log("debug", "downloading #{name} - #{chunkStart}-#{chunkEnd}")
@@ -218,6 +218,7 @@ class BitcasaClient
           res = download().wait()
 
           if res.error
+            client.ee.emit res.error.message, "#{baseName}-#{chunkStart}",failedArguments
             cb(res.error.message,failedArguments)
             return
 
@@ -245,6 +246,8 @@ class BitcasaClient
 
               client.ee.emit "downloaded", "unhandled json error", "#{baseName}-#{chunkStart}", failedArguments
               return cb "unhandled json error"
+
+            client.ee.emit "downloaded", "unhandled data type", "#{baseName}-#{chunkStart}", failedArguments
             return cb "unhandled data type while downloading"
           else if  data.length !=  (chunkEnd - chunkStart + 1)
             client.logger.log("debug", "failed to download #{location} -- #{data.length} -- #{chunkStart - chunkEnd + 1} -- size mismatch")
