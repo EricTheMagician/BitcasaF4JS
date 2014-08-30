@@ -30,7 +30,7 @@ class BitcasaFile
     if (rEnd + 1) <= file.size and rEnd > rStart
       parentPath = client.bitcasaTree.get(pth.dirname(file.bitcasaPath))
       filePath = pth.join(parentPath,file.name)
-      cache = pth.join(client.cacheLocation,"#{baseName}-#{rStart}-#{rEnd}")
+      cache = pth.join(client.downloadLocation,"#{baseName}-#{rStart}-#{rEnd}")
       unless client.downloadTree.has("#{file.bitcasaBasename}-#{rStart}")
         Fiber ->
           unless exists(cache).wait()
