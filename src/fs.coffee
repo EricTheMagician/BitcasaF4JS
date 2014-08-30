@@ -84,7 +84,7 @@ read = (path, offset, len, buf, fh, cb) ->
         p = "#{file.bitcasaBasename}-#{chunkStart}"
         return cb(dataEnd-dataStart);
       catch error
-        client.logger.log( "error", "failed reading:", error)
+        client.logger.log( "error", "failed reading: #{error}")
         cb(-errnoMap.EIO)
 
     #make sure that we are only reading a file
