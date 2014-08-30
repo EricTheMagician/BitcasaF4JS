@@ -181,7 +181,6 @@ class BitcasaClient
 
     readFile = ->
       Fiber ->
-        console.log "downloaded #{name}-#{start}"
         readSize = end - start;
         buffer = new Buffer(readSize+1)
         fd = open(location,'r').wait()
