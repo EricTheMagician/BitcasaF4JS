@@ -190,8 +190,10 @@ class BitcasaClient
             start: 0
             end: readSize + 1
           client.logger.log('silly',"file exists: #{location}--#{buffer.slice(start,end).length}")
+          client.ee.emit "downloaded", null, "#{baseName}-#{chunkStart}", args
           return cb(null,args)
         else
+          client.ee.emit "downloaded", null, "#{baseName}-#{chunkStart}", failedArguments  
           return cb(null,failedArguments)
       else
         client.logger.log("debug", "downloading #{name} - #{chunkStart}-#{chunkEnd}")
