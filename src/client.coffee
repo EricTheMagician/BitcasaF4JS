@@ -192,10 +192,15 @@ class BitcasaClient
             buffer: buffer
             start: 0
             end: readSize + 1
+          client.ee.emit 'downloaded', null, "#{file.bitcasaBasename}-#{start}", args
           cb(null, args)
+          return null
         .run()
       else
-        return cb(null, failedArgs)
+        client.ee.emit 'downloaded', null, "#{file.bitcasaBasename}-#{start}", failedArgs
+        cb(null, failedArgs)
+
+      return null
 
     if fs.existsSync(location)
       readFile()
@@ -206,6 +211,8 @@ class BitcasaClient
         start: start
         end: end
         maxSize: maxSize
+      downloadServer = "download#{client.downloadServer}"
+      client.downloadServer = (client.downloadServer + 1)% 6
 
       ipc.of[downloadServer].emit 'download', inData
       ipc.of[downloadServer].on 'downloaded', (data) ->
@@ -347,7 +354,7 @@ class BitcasaClient
             keys = parseFolder(client,data).wait()
           catch error
             client.logger.log "error", "there was a problem processing i=#{i}(#{folders[i].name}) - #{error} - folders length - #{folders.length} - data"
-            client.logger.log "debug", "the bad data was: #{data}"
+            client.logger.log "debug", "the bad data was:", data
             processingError = true
             if error.message == 9006
               apiRateLimit == true
