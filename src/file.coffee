@@ -30,7 +30,7 @@ class BitcasaFile
     if (rEnd + 1) <= file.size and rEnd > rStart
       parentPath = client.bitcasaTree.get(pth.dirname(file.bitcasaPath))
       filePath = pth.join(parentPath,file.name)
-      cache = pth.join(client.cacheLocation,"#{baseName}-#{rStart}-#{rEnd}")
+      cache = pth.join(client.downloadLocation,"#{baseName}-#{rStart}-#{rEnd}")
       Fiber ->
         unless exists(cache).wait()
           unless client.downloadTree.has("#{file.bitcasaBasename}-#{rStart}")
@@ -92,9 +92,6 @@ class BitcasaFile
         fiberRun = ->
           fiber.run()
           return null
-
-        client.logger.log "silly", "#{file.name} - (#{start}-#{end})"
-
 
         #only read ahead on certain cases
         if readAhead
