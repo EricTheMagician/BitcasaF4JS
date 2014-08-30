@@ -1,7 +1,7 @@
 ###
 this program takes in one command line argument and that's the server number
 ###
-
+BASEURL = 'https://developer.api.bitcasa.com/v1/'
 fs = require 'fs-extra'
 Future = require('fibers/future')
 Fiber = require 'fibers'
@@ -12,6 +12,20 @@ winston = require 'winston'
 pth = require 'path'
 rest = require 'restler'
 
+writeFile = Future.wrap(fs.writeFile)
+open = Future.wrap(fs.open,2)
+read = Future.wrap(fs.read,5)
+#since fs.exists does not return an error, wrap it using an error
+_exists = (path, cb) ->
+  fs.exists path, (success)->
+    cb(null,success)
+exists = Future.wrap(_exists,1)
+
+_close = (path,cb) ->
+  fs.close path, (err) ->
+    cb(err, true)
+close = Future.wrap(_close,1)
+
 ipc.config =
   appspace        : 'bitcasaf4js.',
   socketRoot      : '/tmp/',
@@ -19,7 +33,7 @@ ipc.config =
   networkHost     : 'localhost',
   networkPort     : 8000,
   encoding        : 'utf8',
-  silent          : false,
+  silent          : true,
   maxConnections  : 100,
   retry           : 500,
   maxRetries      : 5,
@@ -27,16 +41,21 @@ ipc.config =
 
 logger = new (winston.Logger)({
     transports: [
-      new (winston.transports.Console)({ level: 'info' }),
       new (winston.transports.File)({ filename: '/tmp/BitcasaF4JS.log', level:'debug' })
     ]
   })
 
-download = (path, name, start,end,maxSize, recurse, cb ) ->
+download = (path, name, start,end,maxSize, cb ) ->
+  #round the amount of bytes to be downloaded to multiple chunks
+  chunkStart = Math.floor((start)/config.chunkSize) * config.chunkSize
+  end = Math.min(end,maxSize)
+  chunkEnd = Math.min( Math.ceil(end/config.chunkSize) * config.chunkSize, maxSize)-1 #and make sure that it's not bigger than the actual file
+  chunks = (chunkEnd - chunkStart)/config.chunkSize
+
   Fiber( ->
     baseName = pth.basename path
     #save location
-    location = pth.join(config.cacheLoction, "download","#{baseName}-#{chunkStart}-#{chunkEnd}")
+    location = pth.join(config.cacheLocation, "download","#{baseName}-#{chunkStart}-#{chunkEnd}")
 
     failedArguments =
       buffer: new Buffer(0)
@@ -47,19 +66,17 @@ download = (path, name, start,end,maxSize, recurse, cb ) ->
     #otherwise, download from the web
 
     if exists(location).wait()
-      if recurse
-        readSize = end - start;
-        buffer = new Buffer(readSize+1)
-        fd = open(location,'r').wait()
-        bytesRead = read(fd,buffer,0,readSize+1, start-chunkStart).wait()
-        close(fd)
-        args =
-          buffer: buffer
-          start: 0
-          end: readSize + 1
-        return cb(null,args)
-      else
-        return cb(null,failedArguments)
+      readSize = end - start;
+      buffer = new Buffer(readSize+1)
+      fd = open(location,'r').wait()
+      bytesRead = read(fd,buffer,0,readSize+1, start-chunkStart).wait()
+      close(fd)
+      args =
+        buffer: buffer
+        start: 0
+        end: readSize + 1
+      cb(null,args)
+      return null
     else
       logger.log("debug", "downloading #{name} - #{chunkStart}-#{chunkEnd}")
 
@@ -79,8 +96,8 @@ download = (path, name, start,end,maxSize, recurse, cb ) ->
             else
                 _cb(null, {error:null, data: response.raw, response: response})
 
-      download = Future.wrap(_download)
-      res = download().wait()
+      _download = Future.wrap(_download,0)
+      res = _download().wait()
 
       if res.error
         cb(res.error.message,failedArguments)
@@ -102,9 +119,9 @@ download = (path, name, start,end,maxSize, recurse, cb ) ->
           buffer: data,
           start: start - chunkStart,
           end : end+1-chunkStart
+        writeFile(location,data).wait()
 
-        cb null, args
-        return writeFile(location,data).wait()
+        return cb null, args
 
 
   ).run()
@@ -112,8 +129,10 @@ download = (path, name, start,end,maxSize, recurse, cb ) ->
 ipc.serve ->
   ipc.server.on 'download', (inData, socket) ->
     callback = (err, data) ->
-      Object.extend(data, inData)
-      ipc.server.emit 'downloaded', data
-    download( inData.path,  inData.name,  inData.start, inData.end, inData.maxSize,  inData.recurse, callback )
-
+      outData =
+        ostart: inData.start #original start
+        path: inData.path
+      ipc.server.emit socket, 'downloaded',outData
+    download( inData.path,  inData.name,  inData.start, inData.end, inData.maxSize, callback )
+    return null
 ipc.server.start()

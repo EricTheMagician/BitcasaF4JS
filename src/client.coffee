@@ -20,10 +20,10 @@ ipc.config =
   networkHost     : 'localhost',
   networkPort     : 8000,
   encoding        : 'utf8',
-  silent          : false,
+  silent          : true,
   maxConnections  : 100,
   retry           : 500,
-  maxRetries      : 5,
+  maxRetries      : 100,
   stopRetrying    : false
 
 
@@ -123,6 +123,10 @@ class BitcasaClient
     @uploadLocation = pth.join @cacheLocation, "upload"
     fs.ensureDirSync(@downloadLocation)
     fs.ensureDirSync(@uploadLocation)
+    @downloadServer = 0
+    for i in [0...6]
+      ipc.connectTo "download#{i}"
+
 
   setRest: ->
     @client = new Client()
@@ -167,12 +171,41 @@ class BitcasaClient
   #
   ###
   download: (client, path, name, start,end,maxSize, recurse, cb ) ->
-    #round the amount of bytes to be downloaded to multiple chunks
-    chunkStart = Math.floor((start)/client.chunkSize) * client.chunkSize
-    end = Math.min(end,maxSize)
-    chunkEnd = Math.min( Math.ceil(end/client.chunkSize) * client.chunkSize, maxSize)-1 #and make sure that it's not bigger than the actual file
+    downloadServer = "download#{client.downloadServer}"
+    client.downloadServer = (client.downloadServer + 1)% 6
 
-    chunks = (chunkEnd - chunkStart)/client.chunkSize
+    inData =
+      path: path
+      name: name
+      start: start
+      end: end
+      maxSize: maxSize
+
+    chunkStart = Math.floor((start)/client.chunkSize) * client.chunkSize
+    chunkEnd = Math.min( Math.ceil(end/client.chunkSize) * client.chunkSize, maxSize)-1 #and make sure that it's not bigger than the actual file
+    baseName = pth.basename path
+    ipc.of[downloadServer].emit 'download', inData
+    ipc.of[downloadServer].on 'downloaded', (data) ->
+      if path == data.path and start == data.ostart
+        Fiber ->
+          console.log "downloaded #{name}-#{start}"
+          location = pth.join(client.downloadLocation,"#{baseName}-#{chunkStart}-#{chunkEnd}")
+          readSize = end - start;
+          buffer = new Buffer(readSize+1)
+          fd = open(location,'r').wait()
+          bytesRead = read(fd,buffer,0,readSize+1, start-chunkStart).wait()
+          close(fd)
+          args =
+            buffer: buffer
+            start: 0
+            end: readSize + 1
+          cb(null, args)
+        .run()
+      return null
+
+
+
+    return null
 
 
   upload: (client, parentPath, file, cb) ->
