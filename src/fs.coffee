@@ -81,7 +81,6 @@ read = (path, offset, len, buf, fh, cb) ->
     callback = (dataBuf,dataStart,dataEnd) ->
       try
         dataBuf.copy(buf,0,dataStart,dataEnd);
-        p = "#{file.bitcasaBasename}-#{chunkStart}"
         return cb(dataEnd-dataStart);
       catch error
         client.logger.log( "error", "failed reading: #{error}")
