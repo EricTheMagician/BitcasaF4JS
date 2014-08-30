@@ -12,7 +12,10 @@ RedBlackTree = require('data-structures').RedBlackTree
 EventEmitter = require("events").EventEmitter
 
 ipc = require 'node-ipc'
-
+failedArgs =
+  buffer: new Buffer(0)
+  start:0
+  end:0
 ipc.config =
   appspace        : 'bitcasaf4js.',
   socketRoot      : '/tmp/',
@@ -170,28 +173,29 @@ class BitcasaClient
   #   recurse: this should be renamed. recurse is currently used to determine whether the filesystem needs this file, or if it's a read ahead call
   #
   ###
-  download: (client, path, name, start,end,maxSize, recurse, cb ) ->
-    downloadServer = "download#{client.downloadServer}"
-    client.downloadServer = (client.downloadServer + 1)% 6
+  download: (client, file, path, name, start,end,maxSize, recurse, cb ) ->
     chunkStart = Math.floor((start)/client.chunkSize) * client.chunkSize
     chunkEnd = Math.min( Math.ceil(end/client.chunkSize) * client.chunkSize, maxSize)-1 #and make sure that it's not bigger than the actual file
-    baseName = pth.basename path
+    basename = file.bitcasaBasename
 
-    location = pth.join(client.downloadLocation,"#{baseName}-#{chunkStart}-#{chunkEnd}")
+    location = pth.join(client.downloadLocation,"#{basename}-#{chunkStart}-#{chunkEnd}")
 
     readFile = ->
-      Fiber ->
-        readSize = end - start;
-        buffer = new Buffer(readSize+1)
-        fd = open(location,'r').wait()
-        bytesRead = read(fd,buffer,0,readSize+1, start-chunkStart).wait()
-        close(fd)
-        args =
-          buffer: buffer
-          start: 0
-          end: readSize + 1
-        cb(null, args)
-      .run()
+      if recurse
+        Fiber ->
+          readSize = end - start;
+          buffer = new Buffer(readSize+1)
+          fd = open(location,'r').wait()
+          bytesRead = read(fd,buffer,0,readSize+1, start-chunkStart).wait()
+          close(fd)
+          args =
+            buffer: buffer
+            start: 0
+            end: readSize + 1
+          cb(null, args)
+        .run()
+      else
+        return cb(null, failedArgs)
 
     if fs.existsSync(location)
       readFile()
