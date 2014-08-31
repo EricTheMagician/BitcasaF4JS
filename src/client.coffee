@@ -185,7 +185,15 @@ class BitcasaClient
         Fiber ->
           readSize = end - start;
           buffer = new Buffer(readSize+1)
-          fd = open(location,'r').wait()
+
+          try #sometimes, the cached file might deleted. if that happens, just try downloading/reading it again later
+            fd = open(location,'r').wait()
+          catch error
+            client.logger.log "error", "there was a problem opening file: #{basename}-#{chunkStart}-#{chunkEnd}"
+            fn = ->
+              client.download(client, file, path, name, start,end,maxSize, recurse, cb )
+            setImmediate fn
+            return
           bytesRead = read(fd,buffer,0,readSize+1, start-chunkStart).wait()
           close(fd)
           args =
@@ -212,7 +220,7 @@ class BitcasaClient
         end: end
         maxSize: maxSize
       downloadServer = "download#{client.downloadServer}"
-      client.downloadServer = (client.downloadServer + 1)% 6
+      client.downloadServer = (client.downloadServer + 1)% 2
 
       ipc.of[downloadServer].emit 'download', inData
       ipc.of[downloadServer].on 'downloaded', (data) ->
