@@ -189,7 +189,7 @@ class BitcasaClient
           try #sometimes, the cached file might deleted. if that happens, just try downloading/reading it again later
             fd = open(location,'r').wait()
           catch error
-            client.logger.log "error", "there was a problem opening file: #{basename}-#{chunkStart}-#{chunkEnd}"
+            client.logger.log "error", "there was a problem opening file: #{basename}-#{chunkStart}-#{chunkEnd}, #{error.message}"
             fn = ->
               client.download(client, file, path, name, start,end,maxSize, recurse, cb )
             setImmediate fn
