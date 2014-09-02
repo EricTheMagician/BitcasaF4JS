@@ -128,9 +128,8 @@ class BitcasaClient
     fs.ensureDirSync(@uploadLocation)
     @downloadServer = 0
 
-    #for i in [0...6]
-    i = 0
-    ipc.connectTo "download#{i}"
+    for i in [0...2]
+      ipc.connectTo "download#{i}"
 
 
   setRest: ->
@@ -224,7 +223,7 @@ class BitcasaClient
       downloadServer = "download#{client.downloadServer}"
 
       #in the future, allow users to use more than 1 download server
-      client.downloadServer = 0 #(client.downloadServer + 1)% 1
+      client.downloadServer = (client.downloadServer + 1)% 2
 
       ipc.of[downloadServer].emit 'download', inData
       ipc.of[downloadServer].on 'downloaded', (data) ->
