@@ -89,12 +89,21 @@ download = (path, name, start,end,maxSize, cb ) ->
             Range: "bytes=#{chunkStart}-#{chunkEnd}"
         }
         .on 'complete', (result, response) ->
-          unless called
-            called = true
             if result instanceof Error
                 _cb(null, {error: result})
             else
-                _cb(null, {error:null, data: response.raw, response: response})
+              if result instanceof Error
+                _cb(null, {error: result})
+              else
+                if response.headers["content-type"].length == 0 #if it's raw data
+                  _cb(null, {error:null, data: response.raw, response: response})
+                else
+                  try #check to see if it's json
+                    data = JSON.parse(result)
+                    _cb(null, {error:null, data: data, response: response})
+                  catch #it might return html for some reason
+                    _cb(null, {error:null, data: response.raw, response: response})
+
 
       _download = Future.wrap(_download,0)
       res = _download().wait()
@@ -109,6 +118,11 @@ download = (path, name, start,end,maxSize, cb ) ->
       if not (data instanceof Buffer)
         logger.log("debug", "failed to download #{location} -- typeof data: #{typeof data} -- length #{data.length} -- invalid type -- content-type: #{response.headers["content-type"]} -- encoding #{response.headers["content-encoding"]} - path : #{path}")
         logger.log("debug", data)
+        if data.error
+          if data.error.code
+            code = data.error.code
+            if code == 2001 or code == 2003 or code == 3001
+              return cb "delete"
         return cb "unhandled data type while downloading"
       else if  data.length !=  (chunkEnd - chunkStart + 1)
         logger.log("debug", "failed to download #{location} -- #{data.length} -- #{chunkStart - chunkEnd + 1} -- size mismatch")
@@ -129,9 +143,16 @@ download = (path, name, start,end,maxSize, cb ) ->
 ipc.serve ->
   ipc.server.on 'download', (inData, socket) ->
     callback = (err, data) ->
-      outData =
-        ostart: inData.start #original start
-        path: inData.path
+      if data == "delete"
+        outData =
+          ostart: inData.start #original start
+          path: inData.path
+          delete: true
+      else
+        outData =
+          ostart: inData.start #original start
+          path: inData.path
+          delete: false
       ipc.server.emit socket, 'downloaded',outData
     download( inData.path,  inData.name,  inData.start, inData.end, inData.maxSize, callback )
     return null

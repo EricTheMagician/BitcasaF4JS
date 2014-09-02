@@ -127,8 +127,10 @@ class BitcasaClient
     fs.ensureDirSync(@downloadLocation)
     fs.ensureDirSync(@uploadLocation)
     @downloadServer = 0
-    for i in [0...6]
-      ipc.connectTo "download#{i}"
+
+    #for i in [0...6]
+    i = 0
+    ipc.connectTo "download#{i}"
 
 
   setRest: ->
@@ -220,12 +222,23 @@ class BitcasaClient
         end: end
         maxSize: maxSize
       downloadServer = "download#{client.downloadServer}"
-      client.downloadServer = (client.downloadServer + 1)% 2
+
+      #in the future, allow users to use more than 1 download server
+      client.downloadServer = 0 #(client.downloadServer + 1)% 1
 
       ipc.of[downloadServer].emit 'download', inData
       ipc.of[downloadServer].on 'downloaded', (data) ->
         if path == data.path and start == data.ostart
-          readFile()
+          if data.delete #make sure that the file was not deleted from bitcasa
+            parent = client.bitcasaTree.get pth.dirname path
+            idx = parent.children.indexOf name
+            if idx >= 0
+              parent.children.slice idx, 1
+            client.folderTree.remove( pth.join(parent, name))
+            client.ee.emit 'downloaded', 3001
+            return cb(3001)
+          else
+            readFile()
         return null
 
 

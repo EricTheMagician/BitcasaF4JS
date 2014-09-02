@@ -106,7 +106,7 @@ class BitcasaFile
         catch error #there might have been a connection error
           data = null
         if data == null
-          cb new Buffer(0), 0,0
+          cb()
           return
         cb( data.buffer, data.start, data.end )
 
