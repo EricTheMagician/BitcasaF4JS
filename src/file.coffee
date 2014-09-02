@@ -87,8 +87,6 @@ class BitcasaFile
           fiber.run()
           return null
 
-        client.logger.log "silly", "#{file.name} - (#{start}-#{end})"
-
         #download chunks
         data = download(start,end)
 
@@ -101,13 +99,12 @@ class BitcasaFile
           data = data.wait()
         catch error #there might have been a connection error
           data = null
+          client.logger.debug "debug", "failed to download chunk #{file.name}-#{start} - #{error.message}"
         if data == null
-          cb new Buffer(0), 0,0
+          cb()
           return
         cb( data.buffer, data.start, data.end )
 
-
-        client.logger.log "silly", "after downloading - #{data.buffer.length} - #{data.start} - #{data.end}"
       ).run()
     else if nChunks < 2
       end1 = chunkStart + client.chunkSize - 1

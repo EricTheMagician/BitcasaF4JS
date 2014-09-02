@@ -212,14 +212,27 @@ class BitcasaClient
               if result instanceof Error
                 _cb(null, {error: result})
               else
-                _cb(null, {error:null, data: response.raw, response: response})
+                if result instanceof Error
+                  _cb(null, {error: result})
+                else
+                  if response.headers["content-type"].length == 0 #if it's raw data
+                    _cb(null, {error:null, data: response.raw, response: response})
+                  else
+                    try #check to see if it's json
+                      data = JSON.parse(result)
+                      _cb(null, {error:null, data: data, response: response})
+                    catch #it might return html for some reason
+                      _cb(null, {error:null, data: response.raw, response: response})
+
+
+
 
           download = Future.wrap(_download)
           res = download().wait()
 
           if res.error
             client.ee.emit res.error.message, "#{baseName}-#{chunkStart}",failedArguments
-            cb(res.error.message,failedArguments)
+            cb(res.error.message)
             return
 
           data = res.data
@@ -232,17 +245,18 @@ class BitcasaClient
             client.logger.log("debug", data)
             if response.headers["content-type"] == "application/json; charset=UTF-8"
               res = JSON.parse(data)
+              code = res.error.code;
               #if file not found,remove it from the tree.
               #this can happen if another client has deleted
-              if res.error.code == 2003
+              if code == 2003 or code == 3001
                 parentPath = client.bitcasaTree.get(pth.dirname(path))
                 filePath = pth.join(parentPath,name)
                 client.folderTree.remove(filePath)
                 client.ee.emit "downloaded", "file does not exist anymore","#{baseName}-#{chunkStart}", failedArguments
-                return cb("file does not exist anymore", failedArguments)
-              if res.error.code == 9006
+                return cb("file does not exist anymore")
+              if code == 9006
                 client.ee.emit "downloaded", "api rate limit reached while downloading","#{baseName}-#{chunkStart}", failedArguments
-                return cb "api rate limit reached while downloading", failedArguments
+                return cb "api rate limit reached while downloading"
 
               client.ee.emit "downloaded", "unhandled json error", "#{baseName}-#{chunkStart}", failedArguments
               return cb "unhandled json error"
