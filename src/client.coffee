@@ -265,6 +265,9 @@ class BitcasaClient
             return cb "unhandled data type while downloading"
           else if  data.length !=  (chunkEnd - chunkStart + 1)
             client.logger.log("debug", "failed to download #{location} -- #{data.length} -- #{chunkStart - chunkEnd + 1} -- size mismatch")
+            if data.length == 71
+              client.logger.log("debug", "saq error: with size 71 #{typeof data}")
+              client.logger.log("debug", data)
             client.ee.emit "downloaded", "data downloaded incorrectSize", "#{baseName}-#{chunkStart}", failedArguments
             return cb "data downloaded incorrectSize"
           else
