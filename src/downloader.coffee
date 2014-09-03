@@ -123,6 +123,10 @@ download = (path, name, start,end,maxSize, cb ) ->
             code = data.error.code
             if code == 2001 or code == 2003 or code == 3001
               return cb "delete"
+            if code == 9006
+              fn = ->
+                cb "api rate limit reached"
+              return setTimeout( fn, 61000 )
         return cb "unhandled data type while downloading"
       else if  data.length !=  (chunkEnd - chunkStart + 1)
         logger.log("debug", "failed to download #{location} -- #{data.length} -- #{chunkStart - chunkEnd + 1} -- size mismatch")
