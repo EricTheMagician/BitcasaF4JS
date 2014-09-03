@@ -143,6 +143,10 @@ class BitcasaClient
     req.on 'error', (err) ->
       cb err
 
+  convertRealPath: (obj) ->
+    parent = pth.dirname obj.bitcasaPath
+    return pth.join( client.bitcasaTree.get(parent), obj.name  )
+
   ###
   #
   # download file from bitcasa
@@ -393,7 +397,6 @@ class BitcasaClient
             Fiber.yield()
           processing[i] = getFolder(client, folders[i].bitcasaPath,depth )
         wait(processing)
-        apiRateLimit = false
         for i in [0...processing.length]
           client.logger.log "silly", "proccessing[#{i}] out of #{processing.length} -- folders length = #{folders.length}"
           processingError = false
@@ -414,19 +417,16 @@ class BitcasaClient
             client.logger.log "error", "there was a problem processing i=#{i}(#{folders[i].name}) - #{error} - folders length - #{folders.length} - data"
             client.logger.log "debug", "the bad data was: #{data}"
             processingError = true
-            if error.code
-              if error.code == 9006
-                apiRateLimit == true
-
-            folders.push(folders[i])
-
-            processingError = true
-
-          if apiRateLimit
-            setTimeout fiberRun, 61000
-            Fiber.yield()
-            folders.splice(0, i)
-
+            switch error.code
+              when 9006
+                setTimeout fiberRun, 61000
+                Fiber.yield()
+                folders.push(folders[i])
+                folders.splice(0, i)
+              when 2001
+                client.folderTree.remove client.convertRealPath(folders[i])
+              when 2002
+                client.folderTree.remove client.convertRealPath(folders[i])
 
           if processingError
             continue
