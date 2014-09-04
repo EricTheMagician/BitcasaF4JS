@@ -25,7 +25,6 @@ class BitcasaFolder
       return null
 
     if result.error
-      breakLoop = false
       switch result.error.code
         when 2001
           client.logger.log "debug", "manifest does not exist"
@@ -45,6 +44,9 @@ class BitcasaFolder
       fiberRun = ->
         fiber.run()
       for o in result.result.items
+        unless o #check that the object is not undefined
+          continue
+
         count++
         if count % 50 == 0
           setImmediate fiberRun
