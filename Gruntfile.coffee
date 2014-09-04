@@ -8,9 +8,10 @@ module.exports = (grunt) ->
       compile: {
         files: {
           # 'build/bitcasa/filesystem.js': ['src/file.coffee', 'src/folder.coffee'],
-          # 'build/bitcasa/client.js': ['src/client.coffee'],
+          'build/client.js': ['src/client.coffee'],
           'build/fs.js': ['src/file.coffee', 'src/folder.coffee', 'src/client.coffee', 'src/fs.coffee'],
-          'build/watch.js': ['src/watch.coffee']
+          'build/watch.js': ['src/watch.coffee'],
+          'build/downloader.js': ['src/downloader.coffee']
         }
       }
     },
@@ -31,7 +32,7 @@ module.exports = (grunt) ->
         }
       },
       scripts:{
-        files:['src/file.coffee', 'src/folder.coffee', 'src/client.coffee', 'src/fs.coffee', 'test/**/*.coffee']
+        files:['src/downloader.coffee', 'src/file.coffee', 'src/folder.coffee', 'src/client.coffee', 'src/fs.coffee', 'test/**/*.coffee']
         tasks:['coffee']
       }
     },

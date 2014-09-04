@@ -5,13 +5,30 @@ hashmap = require( 'hashmap' ).HashMap
 pth = require 'path'
 fs = require 'fs-extra'
 memoize = require 'memoizee'
-d = require('d');
 Future = require('fibers/future')
 Fiber = require 'fibers'
 wait = Future.wait
 RedBlackTree = require('data-structures').RedBlackTree
-util         = require("util")
 EventEmitter = require("events").EventEmitter
+
+ipc = require 'node-ipc'
+failedArgs =
+  buffer: new Buffer(0)
+  start:0
+  end:0
+ipc.config =
+  appspace        : 'bitcasaf4js.',
+  socketRoot      : '/tmp/',
+  id              : "client",
+  networkHost     : 'localhost',
+  networkPort     : 8000,
+  encoding        : 'utf8',
+  silent          : true,
+  maxConnections  : 100,
+  retry           : 500,
+  maxRetries      : 100,
+  stopRetrying    : false
+
 
 _parseFolder = (client,data, cb)->
   fn = ->
@@ -109,6 +126,11 @@ class BitcasaClient
     @uploadLocation = pth.join @cacheLocation, "upload"
     fs.ensureDirSync(@downloadLocation)
     fs.ensureDirSync(@uploadLocation)
+    @downloadServer = 0
+
+    for i in [0...2]
+      ipc.connectTo "download#{i}"
+
 
   setRest: ->
     @client = new Client()
@@ -156,133 +178,76 @@ class BitcasaClient
   #   recurse: this should be renamed. recurse is currently used to determine whether the filesystem needs this file, or if it's a read ahead call
   #
   ###
-  download: (client, path, name, start,end,maxSize, recurse, cb ) ->
-    #round the amount of bytes to be downloaded to multiple chunks
+  download: (client, file, path, name, start,end,maxSize, recurse, cb ) ->
     chunkStart = Math.floor((start)/client.chunkSize) * client.chunkSize
-    end = Math.min(end,maxSize)
     chunkEnd = Math.min( Math.ceil(end/client.chunkSize) * client.chunkSize, maxSize)-1 #and make sure that it's not bigger than the actual file
+    basename = file.bitcasaBasename
 
-    chunks = (chunkEnd - chunkStart)/client.chunkSize
+    location = pth.join(client.downloadLocation,"#{basename}-#{chunkStart}-#{chunkEnd}")
 
-    Fiber( ->
-      baseName = pth.basename path
-      #save location
-      location = pth.join(client.downloadLocation,"#{baseName}-#{chunkStart}-#{chunkEnd}")
-      client.logger.log('silly',"cache location: #{location}")
-
-      failedArguments =
-        buffer: new Buffer(0)
-        start: 0
-        end: 0
-
-      #check if the data has been cached or not
-      #otherwise, download from the web
-
-      if exists(location).wait()
-        if recurse
+    readFile = ->
+      if recurse
+        Fiber ->
           readSize = end - start;
           buffer = new Buffer(readSize+1)
-          fd = open(location,'r').wait()
+
+          try #sometimes, the cached file might deleted. if that happens, just try downloading/reading it again later
+            fd = open(location,'r').wait()
+          catch error
+            client.logger.log "error", "there was a problem opening file: #{basename}-#{chunkStart}-#{chunkEnd}, #{error.message}"
+            fn = ->
+              client.download(client, file, path, name, start,end,maxSize, recurse, cb )
+            setImmediate fn
+            return
           bytesRead = read(fd,buffer,0,readSize+1, start-chunkStart).wait()
           close(fd)
           args =
             buffer: buffer
             start: 0
             end: readSize + 1
-          client.logger.log('silly',"file exists: #{location}--#{buffer.slice(start,end).length}")
-          client.ee.emit "downloaded", null, "#{baseName}-#{chunkStart}", args
-          return cb(null,args)
-        else
-          client.ee.emit "downloaded", null, "#{baseName}-#{chunkStart}", failedArguments
-          return cb(null,failedArguments)
+          client.ee.emit 'downloaded', null, "#{file.bitcasaBasename}-#{start}", args
+          cb(null, args)
+          return null
+        .run()
       else
-        client.logger.log("debug", "downloading #{name} - #{chunkStart}-#{chunkEnd}")
-        if client.rateLimit.tryRemoveTokens(1)
-          client.logger.log "silly", "download requests: #{client.rateLimit.getTokensRemaining()}"
-          client.logger.log "silly", "starting to download #{location}"
+        client.ee.emit 'downloaded', null, "#{file.bitcasaBasename}-#{start}", failedArgs
+        cb(null, failedArgs)
 
-          _download = (_cb) ->
-            called = false
-            rest.get "#{BASEURL}files/name.ext?path=#{path}&access_token=#{client.accessToken}", {
-              decoding: "buffer"
-              timeout: 300000
-              headers:
-                Range: "bytes=#{chunkStart}-#{chunkEnd}"
-            }
-            .on 'complete', (result, response) ->
-              if result instanceof Error
-                _cb(null, {error: result})
-              else
-                if result instanceof Error
-                  _cb(null, {error: result})
-                else
-                  if response.headers["content-type"].length == 0 #if it's raw data
-                    _cb(null, {error:null, data: response.raw, response: response})
-                  else
-                    try #check to see if it's json
-                      data = JSON.parse(result)
-                      _cb(null, {error:null, data: data, response: response})
-                    catch #it might return html for some reason
-                      _cb(null, {error:null, data: response.raw, response: response})
+      return null
 
-          download = Future.wrap(_download)
-          res = download().wait()
+    if fs.existsSync(location)
+      readFile()
+    else
+      inData =
+        path: path
+        name: name
+        start: start
+        end: end
+        maxSize: maxSize
+      downloadServer = "download#{client.downloadServer}"
 
-          if res.error
-            client.ee.emit res.error.message, "#{baseName}-#{chunkStart}",failedArguments
-            cb(res.error.message)
-            return
+      #in the future, allow users to use more than 1 download server
+      client.downloadServer = (client.downloadServer + 1)% 2
 
-          data = res.data
-          response = res.response
-
-          client.logger.log("debug", "downloaded: #{location} - #{chunkEnd-chunkStart} -- limit #{client.rateLimit.getTokensRemaining()}")
-
-          if not (data instanceof Buffer)
-            client.logger.log("debug", "failed to download #{location} -- typeof data: #{typeof data} -- length #{data.length} -- invalid type -- content-type: #{response.headers["content-type"]} -- encoding #{response.headers["content-encoding"]} - path : #{path}")
-            client.logger.log("debug", data)
-            if response.headers["content-type"] == "application/json; charset=UTF-8"
-              res = JSON.parse(data)
-              code = res.error.code;
-              #if file not found,remove it from the tree.
-              #this can happen if another client has deleted
-              if code == 2003 or code == 3001
-                parentPath = client.bitcasaTree.get(pth.dirname(path))
-                filePath = pth.join(parentPath,name)
-                client.folderTree.remove(filePath)
-                client.ee.emit "downloaded", "file does not exist anymore","#{baseName}-#{chunkStart}", failedArguments
-                return cb("file does not exist anymore")
-              if code == 9006
-                client.ee.emit "downloaded", "api rate limit reached while downloading","#{baseName}-#{chunkStart}", failedArguments
-                return cb "api rate limit reached while downloading"
-
-              client.ee.emit "downloaded", "unhandled json error", "#{baseName}-#{chunkStart}", failedArguments
-              return cb "unhandled json error"
-
-            client.ee.emit "downloaded", "unhandled data type", "#{baseName}-#{chunkStart}", failedArguments
-            return cb "unhandled data type while downloading"
-          else if  data.length !=  (chunkEnd - chunkStart + 1)
-            client.logger.log("debug", "failed to download #{location} -- #{data.length} -- #{chunkStart - chunkEnd + 1} -- size mismatch")
-            client.ee.emit "downloaded", "data downloaded incorrectSize", "#{baseName}-#{chunkStart}", failedArguments
-            return cb "data downloaded incorrectSize"
+      ipc.of[downloadServer].emit 'download', inData
+      ipc.of[downloadServer].on 'downloaded', (data) ->
+        if path == data.path and start == data.ostart
+          if data.delete #make sure that the file was not deleted from bitcasa
+            parent = client.bitcasaTree.get pth.dirname path
+            idx = parent.children.indexOf name
+            if idx >= 0
+              parent.children.slice idx, 1
+            client.folderTree.remove( pth.join(parent, name))
+            client.ee.emit 'downloaded', 3001,"#{file.bitcasaBasename}-#{start}"
+            return cb(3001)
           else
-            client.logger.log("debug", "successfully downloaded #{location}")
-            args =
-              buffer: data,
-              start: start - chunkStart,
-              end : end+1-chunkStart
-
-            client.ee.emit "downloaded", null,"#{baseName}-#{chunkStart}", args
-            cb null, args
-            return writeFile(location,data).wait()
-
-        else #for not having enough tokens
-          client.logger.log "debug", "downloading file failed: out of tokens"
-          client.ee.emit "downloaded", "downloading file failed: out of tokens", "#{baseName}-#{chunkStart}", args
-          return cb null, failedArguments
+            readFile()
+        return null
 
 
-    ).run()
+
+    return null
+
 
   upload: (client, parentPath, file, cb) ->
     url="#{BASEURL}files#{parentPath}/?access_token=#{client.accessToken}"
@@ -412,7 +377,7 @@ class BitcasaClient
             keys = parseFolder(client,data).wait()
           catch error
             client.logger.log "error", "there was a problem processing i=#{i}(#{folders[i].name}) - #{error} - folders length - #{folders.length} - data"
-            client.logger.log "debug", "the bad data was: #{data}"
+            client.logger.log "debug", "the bad data was:", data
             processingError = true
 
             switch error.code

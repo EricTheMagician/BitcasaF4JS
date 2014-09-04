@@ -45,14 +45,14 @@ class BitcasaFolder
           setImmediate fiberRun
           Fiber.yield()
         #get real path of parent
-        unless o
-          continue
         parent = client.bitcasaTree.get(pth.dirname(o.path))
         #if the parent does not exist, skip it
         if parent == undefined
           continue
 
         realPath = pth.join(parent,o.name)
+
+        client.bitcasaTree.set o.path, realPath
 
         parentFolder = client.folderTree.get parent
         #if parent is undefined, parse later. sometimes, parent errored out while scanning.
@@ -66,7 +66,6 @@ class BitcasaFolder
         obj = client.folderTree.get( realPath )
         if o.category == 'folders'
           # keep track of the conversion of bitcasa path to real path
-          client.bitcasaTree.set o.path, realPath
           keys.push realPath
 
           if obj instanceof BitcasaFolder
@@ -85,6 +84,7 @@ class BitcasaFolder
       _cb = ->
         cb(null, keys)
       setImmediate _cb
+      return null
 
     .run()
 

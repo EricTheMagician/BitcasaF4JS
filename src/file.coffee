@@ -26,16 +26,21 @@ class BitcasaFile
 
   @recursive:  (client,file,rStart, rEnd) ->
     rEnd = Math.min( Math.ceil(rEnd/client.chunkSize) * client.chunkSize, file.size)-1
-    baseName = pth.basename file.bitcasaPath
+    basename = file.bitcasaBasename
     if (rEnd + 1) <= file.size and rEnd > rStart
       parentPath = client.bitcasaTree.get(pth.dirname(file.bitcasaPath))
       filePath = pth.join(parentPath,file.name)
-      cache = pth.join(client.downloadLocation,"#{baseName}-#{rStart}-#{rEnd}")
-      unless client.downloadTree.has("#{file.bitcasaBasename}-#{rStart}")
-        Fiber ->
-          unless exists(cache).wait()
-            file.download(rStart, rEnd, false, ->)
-        .run()
+      cache = pth.join(client.downloadLocation,"#{basename}-#{rStart}-#{rEnd}")
+      Fiber ->
+        unless exists(cache).wait()
+          unless client.downloadTree.has("#{file.bitcasaBasename}-#{rStart}")
+            client.downloadTree.set("#{file.bitcasaBasename}-#{rStart}",1)
+            _callback = ->
+              client.downloadTree.remove("#{file.bitcasaBasename}-#{rStart}")
+            _fn = ->
+              client.download(client, file, file.bitcasaPath, file.name, rStart,rEnd,file.size, false , _callback)
+            setImmediate _fn
+      .run()
 
 
   download: (start,end, readAhead, cb) ->
@@ -55,7 +60,7 @@ class BitcasaFile
           unless client.downloadTree.has("#{file.bitcasaBasename}-#{cStart}")
             client.downloadTree.set("#{file.bitcasaBasename}-#{cStart}", 1)
             fn = ->
-              client.download(client, file.bitcasaPath, file.name, cStart,cEnd,file.size,readAhead, ->)
+              client.download(client, file, file.bitcasaPath, file.name, cStart,cEnd,file.size,readAhead, ->)
             setImmediate fn
           cbCalled = false
           fn = ->
@@ -77,7 +82,7 @@ class BitcasaFile
               return _cb(err, data)
           client.ee.on "downloaded", _callback
         else
-          client.download(client, file.bitcasaPath, file.name, cStart,cEnd,file.size,readAhead,_cb)
+          client.download(client, file, file.bitcasaPath, file.name, cStart,cEnd,file.size,readAhead,_cb)
       .run()
 
     download = Future.wrap(_download)
