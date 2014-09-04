@@ -11,7 +11,8 @@ module.exports = (grunt) ->
           'build/client.js': ['src/client.coffee'],
           'build/fs.js': ['src/file.coffee', 'src/folder.coffee', 'src/client.coffee', 'src/fs.coffee'],
           'build/watch.js': ['src/watch.coffee'],
-          'build/downloader.js': ['src/downloader.coffee']
+          'build/downloader.js': ['src/downloader.coffee'],
+          'build/ls.js': ['src/ls.coffee']
         }
       }
     },
@@ -32,7 +33,7 @@ module.exports = (grunt) ->
         }
       },
       scripts:{
-        files:['src/downloader.coffee', 'src/file.coffee', 'src/folder.coffee', 'src/client.coffee', 'src/fs.coffee', 'test/**/*.coffee']
+        files:['src/ls.coffee','src/downloader.coffee', 'src/file.coffee', 'src/folder.coffee', 'src/client.coffee', 'src/fs.coffee', 'test/**/*.coffee']
         tasks:['coffee']
       }
     },

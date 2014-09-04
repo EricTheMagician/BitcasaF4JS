@@ -49,6 +49,27 @@ errnoMap =
     ESPIPE: 29,
     ENOTEMPTY: 39
 
+#setup ipc for folder listing
+ipc = require 'node-ipc'
+ipc.config =
+  appspace        : 'bitcasaf4js.',
+  socketRoot      : '/tmp/',
+  id              : "client",
+  networkHost     : 'localhost',
+  networkPort     : 8000,
+  encoding        : 'utf8',
+  silent          : true,
+  maxConnections  : 100,
+  retry           : 500,
+  maxRetries      : 100,
+  stopRetrying    : false
+
+ipc.serve ->
+  ipc.server.on 'ls:add', (inData, socket) ->
+    
+  ipc.server.on 'ls:delete', (inData, socket) ->
+
+ipc.server.start()
 
 getattr = (path, cb) ->
   if client.folderTree.has(path)
