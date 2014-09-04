@@ -195,9 +195,9 @@ class BitcasaClient
             fd = open(location,'r').wait()
           catch error
             client.logger.log "error", "there was a problem opening file: #{basename}-#{chunkStart}-#{chunkEnd}, #{error.message}"
-            fn = ->
-              client.download(client, file, path, name, start,end,maxSize, recurse, cb )
-            setImmediate fn
+            client.ee.emit 'downloaded', "error:opening file", "#{file.bitcasaBasename}-#{start}"
+            cb("error:opening file", args)
+
             return
           bytesRead = read(fd,buffer,0,readSize+1, start-chunkStart).wait()
           close(fd)
