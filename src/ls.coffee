@@ -10,6 +10,7 @@ BitcasaFile = module.exports.file
 config = require('./config.json')
 fs = require 'fs-extra'
 pth = require 'path'
+rest = require 'restler'
 
 ipc = require 'node-ipc'
 ipc.config =
@@ -65,6 +66,10 @@ getFolder = Future.wrap(_getFolder)
 
 loadFolderTree = ->
   jsonFile =  "#{config.cacheLocation}/data/folderTree.json"
+  now = Date.now()
+  client.folderTree.set '/', new BitcasaFolder(client, '/', 'root', now, now, [], true)
+  client.bitcasaTree.set( '/', '/')
+
   if fs.existsSync(jsonFile)
     fs.readJson jsonFile, (err, data) ->
       for key in Object.keys(data)
@@ -89,11 +94,12 @@ loadFolderTree = ->
           # keep track of the conversion of bitcasa path to real path
           client.bitcasaTree.set o.path, realPath
           client.folderTree.set key, new BitcasaFolder(client, o.path, o.name, o.ctime, o.mtime, [], true)
+
+      console.log "size:",client.folderTree.count()
+      console.log "root:", client.folderTree.get('/')
       getAllFolders()
   else
     console.log 'did not exist'
-    now = Date.now()
-    client.folderTree.set '/', new BitcasaFolder(client, '/', 'root', now, now, [], true)
     getAllFolders()
 
 
