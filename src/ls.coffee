@@ -5,8 +5,24 @@ RedBlackTree = require('data-structures').RedBlackTree
 hashmap = require( 'hashmap' ).HashMap
 BASEURL = 'https://developer.api.bitcasa.com/v1/'
 RateLimiter = require('limiter').RateLimiter
-BitcasaFolder = modules.export.folder
-BitcasaFile = modules.export.file
+BitcasaFolder = module.exports.folder
+BitcasaFile = module.exports.file
+config = require('./config.json')
+fs = require 'fs-extra'
+
+ipc = require 'node-ipc'
+ipc.config =
+  appspace        : 'bitcasaf4js.',
+  socketRoot      : '/tmp/',
+  id              : "ls",
+  networkHost     : 'localhost',
+  networkPort     : 8000,
+  encoding        : 'utf8',
+  silent          : true,
+  maxConnections  : 100,
+  retry           : 500,
+  maxRetries      : 100,
+  stopRetrying    : false
 
 winston = require 'winston'
 logger = new (winston.Logger)({
@@ -16,6 +32,7 @@ logger = new (winston.Logger)({
     ]
   })
 
+keysTree = new RedBlackTree()
 client =
   folderTree: new hashmap()
   bitcasaTree: new hashmap()
@@ -49,8 +66,18 @@ loadFolderTree = ->
   jsonFile =  "#{config.cacheLocation}/data/folderTree.json"
   if fs.existsSync(jsonFile)
     fs.readJson jsonFile, (err, data) ->
-      BitcasaFolder.parseFolder client, data, getAllFolders
+      fn = (keys)->
+        keysTree.add(key) for key in client.folderTree.keys()
+        console.log "folder size: #{client.folderTree.count()}"
+        console.log client.folderTree.get '/'
+        console.log "keys: ", keys
+        getAllFolders()
+      BitcasaFolder.parseFolder client, {items: data}, fn
+
   else
+    console.log 'did not exist'
+    now = Date.now()
+    client.folderTree.set '/', new BitcasaFolder(client, '/', 'root', now, now, [], true)
     getAllFolders()
 
 saveFolderTree =  ->
@@ -71,7 +98,7 @@ saveFolderTree =  ->
 
 #this function will udpate all the folders content
 
-getAllFolders: ->
+getAllFolders= ->
   folders = [client.folderTree.get('/')]
   foldersNextDepth = []
   depth = 1
@@ -178,9 +205,20 @@ getAllFolders: ->
       if counter % 1000 == 0
         setImmediate fiberRun
         Fiber.yield()
+      unless keysTree.has(key)
+        keyTree.add key
+        obj = client.folderTree.get key
+        ipc.of.client.emit 'ls:add',
+          realPath: key
+          path: obj.path
+          name: obj.name
+          mtime: obj.mtime
+          ctime: obj.ctime
+          size: obj.size
 
       unless client.folderTree.get(key).updated
         client.folderTree.remove(key)
+        ipc.of.client.emit 'ls:delete', key
 
     console.log "folderTree Size After: #{client.folderTree.count()}"
 
@@ -188,3 +226,10 @@ getAllFolders: ->
 
   ).run()
   return null
+
+fn = ->
+  ipc.connectTo 'client', ->
+    ipc.of.client.on 'connect', ->
+      loadFolderTree()
+
+setTimeout fn, 2000

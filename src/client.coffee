@@ -245,7 +245,7 @@ class BitcasaClient
     jsonFile =  "#{client.cacheLocation}/data/folderTree.json"
     if fs.existsSync(jsonFile)
       fs.readJson jsonFile, (err, data) ->
-        BitcasaFolder.parseFolder data
+        BitcasaFolder.parseFolder client,data, ->
 
   deleteFile: (path,cb) ->
 
