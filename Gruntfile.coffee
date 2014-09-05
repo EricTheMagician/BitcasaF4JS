@@ -12,7 +12,7 @@ module.exports = (grunt) ->
           'build/fs.js': ['src/file.coffee', 'src/folder.coffee', 'src/client.coffee', 'src/fs.coffee'],
           'build/watch.js': ['src/watch.coffee'],
           'build/downloader.js': ['src/downloader.coffee'],
-          'build/ls.js': ['src/ls.coffee']
+          'build/ls.js': ['src/ls.coffee', 'src/folder.coffee','src/file.coffee']
         }
       }
     },

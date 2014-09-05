@@ -5,6 +5,8 @@ RedBlackTree = require('data-structures').RedBlackTree
 hashmap = require( 'hashmap' ).HashMap
 BASEURL = 'https://developer.api.bitcasa.com/v1/'
 RateLimiter = require('limiter').RateLimiter
+BitcasaFolder = modules.export.folder
+BitcasaFile = modules.export.file
 
 client =
   folderTree: new hashmap()
@@ -39,37 +41,13 @@ loadFolderTree = ->
   jsonFile =  "#{config.cacheLocation}/data/folderTree.json"
   if fs.existsSync(jsonFile)
     fs.readJson jsonFile, (err, data) ->
-      for key in Object.keys(data)
-        o = data[key]
-
-        #get real path of parent
-        unless client.bitcasaTree.has(pth.dirname(o.path))
-          continue
-
-        parent = client.bitcasaTree.get(pth.dirname(o.path))
-        realPath = pth.join(parent,o.name)
-
-        #add child to parent folder
-        parentFolder = client.folderTree.get parent
-
-        if o.name not in parentFolder.children
-          parentFolder.children.push o.name
-
-        if o.size
-          client.folderTree.set key, new BitcasaFile(client, o.path, o.name, o.size, o.ctime, o.mtime, true )
-        else
-          # keep track of the conversion of bitcasa path to real path
-          client.bitcasaTree.set o.path, realPath
-          client.folderTree.set key, new BitcasaFolder(client, o.path, o.name, o.ctime, o.mtime, [], true)
-      if getAll
-        getAllFolders()
+      BitcasaFolder.parseFolder client, data, getAllFolders
   else
-    if getAll
-      getAllFolders()
+    getAllFolders()
 
 saveFolderTree =  ->
   toSave = {}
-  client.folderTree.forEach (value, key) ->
+  for key in client.folderTree.keys()
     toSave[key] =
       name: value.name
       mtime: value.mtime
