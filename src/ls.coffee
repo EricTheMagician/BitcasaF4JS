@@ -97,8 +97,6 @@ loadFolderTree = ->
           client.bitcasaTree.set o.path, realPath
           client.folderTree.set key, new BitcasaFolder(client, o.path, o.name, o.ctime, o.mtime, [], true)
 
-      console.log "size:",client.folderTree.count()
-      console.log "root:", client.folderTree.get('/')
       getAllFolders()
   else
     console.log 'did not exist'
@@ -110,6 +108,7 @@ loadFolderTree = ->
 saveFolderTree =  ->
   toSave = {}
   for key in client.folderTree.keys()
+    value = client.folderTree.get key
     toSave[key] =
       name: value.name
       mtime: value.mtime
