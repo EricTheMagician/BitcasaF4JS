@@ -28,13 +28,6 @@ ipc.config =
   stopRetrying    : false
 
 
-_parseFolder = (client,data, cb)->
-  fn = ->
-    BitcasaFolder.parseFolder(client,data,cb)
-  setImmediate fn
-
-parseFolder = Future.wrap(_parseFolder)
-
 #for mocha testing
 if Object.keys( module.exports ).length == 0
   r = require './folder.coffee'
@@ -46,6 +39,13 @@ if Object.keys( module.exports ).length == 0
 else
   BitcasaFolder = module.exports.folder
   BitcasaFile = module.exports.file
+
+_parseFolder = (client,data, cb)->
+  fn = ->
+    BitcasaFolder.parseFolder(client,data,cb)
+  setImmediate fn
+
+parseFolder = Future.wrap(_parseFolder)
 
 
 #these libraries are required for file upload

@@ -34,6 +34,14 @@ logger = new (winston.Logger)({
     ]
   })
 
+_parseFolder = (client,data, cb)->
+  fn = ->
+    BitcasaFolder.parseFolder(client,data,cb)
+  setImmediate fn
+
+parseFolder = Future.wrap(_parseFolder)
+
+
 keysTree = new RedBlackTree()
 client =
   folderTree: new hashmap()
