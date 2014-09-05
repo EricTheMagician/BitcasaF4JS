@@ -397,6 +397,7 @@ class BitcasaClient
             Fiber.yield()
           processing[i] = getFolder(client, folders[i].bitcasaPath,depth )
         wait(processing)
+        apiRateLimit = false
         for i in [0...processing.length]
           client.logger.log "silly", "proccessing[#{i}] out of #{processing.length} -- folders length = #{folders.length}"
           processingError = false
@@ -410,7 +411,6 @@ class BitcasaClient
             folders.push(folders[i])
             continue
 
-
           try
             keys = parseFolder(client,data).wait()
           catch error
@@ -419,10 +419,8 @@ class BitcasaClient
             processingError = true
             switch error.code
               when 9006
-                setTimeout fiberRun, 61000
-                Fiber.yield()
                 folders.push(folders[i])
-                folders.splice(0, i)
+                apiRateLimit = true
               when 2001
                 client.folderTree.remove client.convertRealPath(folders[i])
               when 2002
@@ -438,6 +436,10 @@ class BitcasaClient
                 foldersNextDepth.push o
 
         folders.splice 0, processing.length
+        if apiRateLimit
+          setTimeout fiberRun, 61000
+          Fiber.yield()
+
         console.log "length of folders after splicing: #{folders.length}"
         if folders.length == 0 and foldersNextDepth.length > 0
           folders = foldersNextDepth
