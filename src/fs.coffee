@@ -65,12 +65,13 @@ ipc.config =
   stopRetrying    : false
 
 ipc.serve ->
-  ipc.server.on 'ls:add', (obj, socket) ->
-    if inData.size
-      obj = new BitcasaFile(client, obj.path, obj.name, obj.size, obj.ctime, obj.mtime, true)
+  ipc.server.on 'ls:add', (data, socket) ->
+    console.log "ls:add", data
+    if data.size
+      obj = new BitcasaFile(client, data.path, data.name, data.size, data.ctime, data.mtime, true)
     else
-      obj = new BitcasaFolder(client, obj.path, obj.name, obj.ctime, obj.mtime,[], true)
-    client.folderTree.add obj.realPath, obj
+      obj = new BitcasaFolder(client, data.path, data.name, data.ctime, data.mtime,[], true)
+    client.folderTree.set data.realPath, obj
 
   ipc.server.on 'ls:delete', (inData, socket) ->
     client.folderTree.remove inData

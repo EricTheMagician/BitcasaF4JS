@@ -75,10 +75,12 @@ loadFolderTree = ->
       for key in Object.keys(data)
         o = data[key]
 
-        #get real path of parent
+        #make sure parent directory exists
         unless client.bitcasaTree.has(pth.dirname(o.path))
           continue
 
+        keysTree.add key
+        #get real path of parent
         parent = client.bitcasaTree.get(pth.dirname(o.path))
         realPath = pth.join(parent,o.name)
 
@@ -231,7 +233,7 @@ getAllFolders= ->
         setImmediate fiberRun
         Fiber.yield()
       unless keysTree.has(key)
-        keyTree.add key
+        keysTree.add key
         obj = client.folderTree.get key
         ipc.of.client.emit 'ls:add',
           realPath: key
