@@ -66,7 +66,7 @@ ipc.config =
 
 ipc.serve ->
   ipc.server.on 'ls:add', (data, socket) ->
-    console.log "ls:add", data
+    client.logger.log "debug", "ls:add", data
     if data.size
       obj = new BitcasaFile(client, data.path, data.name, data.size, data.ctime, data.mtime, true)
     else
@@ -75,6 +75,7 @@ ipc.serve ->
 
   ipc.server.on 'ls:delete', (inData, socket) ->
     client.folderTree.remove inData
+    client.logger.log "debug", "ls:delete", inData
 
 ipc.server.start()
 
