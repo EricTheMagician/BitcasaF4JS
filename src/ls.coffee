@@ -66,19 +66,37 @@ loadFolderTree = ->
   jsonFile =  "#{config.cacheLocation}/data/folderTree.json"
   if fs.existsSync(jsonFile)
     fs.readJson jsonFile, (err, data) ->
-      fn = (keys)->
-        keysTree.add(key) for key in client.folderTree.keys()
-        console.log "folder size: #{client.folderTree.count()}"
-        console.log client.folderTree.get '/'
-        console.log "keys: ", keys
-        getAllFolders()
-      BitcasaFolder.parseFolder client, {items: data}, fn
+      for key in Object.keys(data)
+        o = data[key]
 
+        #get real path of parent
+        unless client.bitcasaTree.has(pth.dirname(o.path))
+          continue
+
+        parent = client.bitcasaTree.get(pth.dirname(o.path))
+        realPath = pth.join(parent,o.name)
+
+        #add child to parent folder
+        parentFolder = client.folderTree.get parent
+
+        if o.name not in parentFolder.children
+          parentFolder.children.push o.name
+
+        if o.size
+          client.folderTree.set key, new BitcasaFile(client, o.path, o.name, o.size, o.ctime, o.mtime, true )
+        else
+          # keep track of the conversion of bitcasa path to real path
+          client.bitcasaTree.set o.path, realPath
+          client.folderTree.set key, new BitcasaFolder(client, o.path, o.name, o.ctime, o.mtime, [], true)
+      getAllFolders()
   else
     console.log 'did not exist'
     now = Date.now()
     client.folderTree.set '/', new BitcasaFolder(client, '/', 'root', now, now, [], true)
     getAllFolders()
+
+
+
 
 saveFolderTree =  ->
   toSave = {}

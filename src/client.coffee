@@ -245,7 +245,28 @@ class BitcasaClient
     jsonFile =  "#{client.cacheLocation}/data/folderTree.json"
     if fs.existsSync(jsonFile)
       fs.readJson jsonFile, (err, data) ->
-        BitcasaFolder.parseFolder client,data, ->
+        for key in Object.keys(data)
+          o = data[key]
+
+          #get real path of parent
+          unless client.bitcasaTree.has(pth.dirname(o.path))
+            continue
+
+          parent = client.bitcasaTree.get(pth.dirname(o.path))
+          realPath = pth.join(parent,o.name)
+
+          #add child to parent folder
+          parentFolder = client.folderTree.get parent
+
+          if o.name not in parentFolder.children
+            parentFolder.children.push o.name
+
+          if o.size
+            client.folderTree.set key, new BitcasaFile(client, o.path, o.name, o.size, o.ctime, o.mtime, true )
+          else
+            # keep track of the conversion of bitcasa path to real path
+            client.bitcasaTree.set o.path, realPath
+            client.folderTree.set key, new BitcasaFolder(client, o.path, o.name, o.ctime, o.mtime, [], true)
 
   deleteFile: (path,cb) ->
 
