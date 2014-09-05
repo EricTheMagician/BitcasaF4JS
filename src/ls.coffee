@@ -271,4 +271,4 @@ fn = ->
     ipc.of.client.on 'connect', ->
       loadFolderTree()
 
-setTimeout fn, 2000
+setTimeout fn, 120000
