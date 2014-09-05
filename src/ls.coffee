@@ -9,6 +9,7 @@ BitcasaFolder = module.exports.folder
 BitcasaFile = module.exports.file
 config = require('./config.json')
 fs = require 'fs-extra'
+pth = require 'path'
 
 ipc = require 'node-ipc'
 ipc.config =
