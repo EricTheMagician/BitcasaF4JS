@@ -47,6 +47,7 @@ client =
   folderTree: new hashmap()
   bitcasaTree: new hashmap()
   rateLimit: new RateLimiter 150, 'minute'
+  logger: logger
 
 #wrap get folder
 _getFolder = (client, path, depth, cb) ->
