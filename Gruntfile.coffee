@@ -33,7 +33,7 @@ module.exports = (grunt) ->
       },
       scripts:{
         files:['src/ls.coffee','src/downloader.coffee', 'src/file.coffee', 'src/folder.coffee', 'src/client.coffee', 'src/fs.coffee', 'test/**/*.coffee']
-        tasks:['coffee']
+        tasks:['copy','coffee']
       }
     },
     mochaTest: {
@@ -47,12 +47,17 @@ module.exports = (grunt) ->
         src: ['test/testClient.coffee', 'test/testFS.coffee']
       }
     },
-    copy: {
-      main: {
-        src: 'src/config.json.sample',
-        dest: 'build/config.json.sample',
-      },
-    },
+    copy:
+      main:
+        files: [{
+          src: 'src/config.json.sample',
+          dest: 'build/config.json.sample',
+        },
+        {
+          src: 'src/start.sh',
+          dest: 'build/start.sh'
+        }],
+    ,
 
   });
 
