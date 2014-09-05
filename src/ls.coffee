@@ -8,6 +8,14 @@ RateLimiter = require('limiter').RateLimiter
 BitcasaFolder = modules.export.folder
 BitcasaFile = modules.export.file
 
+winston = require 'winston'
+logger = new (winston.Logger)({
+    transports: [
+      new (winston.transports.Console)({ level: 'info' }),
+      new (winston.transports.File)({ filename: '/tmp/BitcasaF4JS.log', level:'debug' })
+    ]
+  })
+
 client =
   folderTree: new hashmap()
   bitcasaTree: new hashmap()
@@ -82,7 +90,7 @@ getAllFolders: ->
     Fiber.yield()
 
     while folders.length > 0
-      client.logger.log  "silly", "folders length = #{folders.length}"
+      logger.log  "silly", "folders length = #{folders.length}"
       tokens = Math.min(Math.floor(client.rateLimit.getTokensRemaining()/6), folders.length)
       if client.rateLimit.getTokensRemaining() < 30
         setImmediate fiberRun
@@ -97,12 +105,12 @@ getAllFolders: ->
         processing[i] = getFolder(client, folders[i].bitcasaPath,depth )
       wait(processing)
       for i in [0...processing.length]
-        client.logger.log "silly", "proccessing[#{i}] out of #{processing.length} -- folders length = #{folders.length}"
+        logger.log "silly", "proccessing[#{i}] out of #{processing.length} -- folders length = #{folders.length}"
         processingError = false
         try #catch socket connection error
           data = processing[i].wait()
         catch error
-          client.logger.log("error", "there was a problem with getting data for folder #{folders[i].name} - #{error}")
+          logger.log("error", "there was a problem with getting data for folder #{folders[i].name} - #{error}")
           folders.push(folders[i])
           processingError = true
 
@@ -115,8 +123,8 @@ getAllFolders: ->
         try
           keys = parseFolder(client,data).wait()
         catch error
-          client.logger.log "error", "there was a problem processing i=#{i}(#{folders[i].name}) - #{error} - folders length - #{folders.length} - data"
-          client.logger.log "debug", "the bad data was:", data
+          logger.log "error", "there was a problem processing i=#{i}(#{folders[i].name}) - #{error} - folders length - #{folders.length} - data"
+          logger.log "debug", "the bad data was:", data
           processingError = true
 
           switch error.code
@@ -158,7 +166,7 @@ getAllFolders: ->
         Fiber.yield()
 
 
-    client.logger.log "debug", "it took #{Math.ceil( ((new Date())-start)/60000)} minutes to update folders"
+    logger.log "debug", "it took #{Math.ceil( ((new Date())-start)/60000)} minutes to update folders"
     console.log "folderTree Size Before: #{client.folderTree.count()}"
 
     #pause for a little after getting all keys
