@@ -62,13 +62,12 @@ loadFolderTree = ->
           client.bitcasaTree.set o.path, realPath
           client.folderTree.set key, new BitcasaFolder(client, o.path, o.name, o.ctime, o.mtime, [], true)
       if getAll
-        client.getAllFolders()
+        getAllFolders()
   else
     if getAll
-      client.getAllFolders()
+      getAllFolders()
 
-saveFolderTree: ->
-  client = @
+saveFolderTree =  ->
   toSave = {}
   client.folderTree.forEach (value, key) ->
     toSave[key] =
@@ -81,7 +80,7 @@ saveFolderTree: ->
       toSave[key].size = value.size
   fs.outputJson "#{config.cacheLocation}/data/folderTree.json", toSave, ->
     fn = ->
-      client.getAllFolders()
+      getAllFolders()
     setTimeout fn, 60000
 
 #this function will udpate all the folders content
@@ -199,7 +198,7 @@ getAllFolders: ->
 
     console.log "folderTree Size After: #{client.folderTree.count()}"
 
-    client.saveFolderTree()
+    saveFolderTree()
 
   ).run()
   return null
