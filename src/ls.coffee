@@ -198,6 +198,8 @@ getAllFolders= ->
               client.folderTree.remove client.convertRealPath(folders[i])
             when 2002
               client.folderTree.remove client.convertRealPath(folders[i])
+            else
+              folders.push( folders[i])
 
         if processingError
           setImmediate fiberRun
