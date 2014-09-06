@@ -165,7 +165,7 @@ class BitcasaClient
           catch error
             client.logger.log "error", "there was a problem opening file: #{basename}-#{chunkStart}-#{chunkEnd}, #{error.message}"
             client.ee.emit 'downloaded', "error:opening file", "#{file.bitcasaBasename}-#{start}"
-            cb("error:opening file", args)
+            cb("error:opening file")
 
             return
           bytesRead = read(fd,buffer,0,readSize+1, start-chunkStart).wait()
