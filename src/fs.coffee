@@ -49,6 +49,35 @@ errnoMap =
     ESPIPE: 29,
     ENOTEMPTY: 39
 
+#setup ipc for folder listing
+ipc = require 'node-ipc'
+ipc.config =
+  appspace        : 'bitcasaf4js.',
+  socketRoot      : '/tmp/',
+  id              : "client",
+  networkHost     : 'localhost',
+  networkPort     : 8000,
+  encoding        : 'utf8',
+  silent          : true,
+  maxConnections  : 100,
+  retry           : 500,
+  maxRetries      : 100,
+  stopRetrying    : false
+
+ipc.serve ->
+  ipc.server.on 'ls:add', (data, socket) ->
+    client.logger.log "debug", "ls:add", data
+    if data.size
+      obj = new BitcasaFile(client, data.path, data.name, data.size, data.ctime, data.mtime, true)
+    else
+      obj = new BitcasaFolder(client, data.path, data.name, data.ctime, data.mtime,[], true)
+    client.folderTree.set data.realPath, obj
+
+  ipc.server.on 'ls:delete', (inData, socket) ->
+    client.folderTree.remove inData
+    client.logger.log "debug", "ls:delete", inData
+
+ipc.server.start()
 
 getattr = (path, cb) ->
   if client.folderTree.has(path)
