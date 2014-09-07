@@ -195,9 +195,9 @@ getAllFolders= ->
               apiRateLimit = true
               folders.push(folders[i])
             when 2001
-              client.folderTree.remove client.convertRealPath(folders[i])
+              client.folderTree.remove client.convertRealPath(client,folders[i])
             when 2002
-              client.folderTree.remove client.convertRealPath(folders[i])
+              client.folderTree.remove client.convertRealPath(client,folders[i])
             else
               folders.push( folders[i])
 

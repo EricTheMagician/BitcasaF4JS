@@ -130,7 +130,7 @@ class BitcasaClient
     req.on 'error', (err) ->
       cb err
 
-  convertRealPath: (obj) ->
+  convertRealPath: (client, obj) ->
     parent = pth.dirname obj.bitcasaPath
     return pth.join( client.bitcasaTree.get(parent), obj.name  )
 
