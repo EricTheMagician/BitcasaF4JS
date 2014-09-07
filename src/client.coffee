@@ -143,7 +143,7 @@ class BitcasaClient
     req.on 'error', (err) ->
       cb err
 
-  convertRealPath: (obj) ->
+  convertRealPath: (client, obj) ->
     parent = pth.dirname obj.bitcasaPath
     return pth.join( client.bitcasaTree.get(parent), obj.name  )
 
@@ -422,9 +422,9 @@ class BitcasaClient
                 folders.push(folders[i])
                 apiRateLimit = true
               when 2001
-                client.folderTree.remove client.convertRealPath(folders[i])
+                client.folderTree.remove client.convertRealPath(client.folders[i])
               when 2002
-                client.folderTree.remove client.convertRealPath(folders[i])
+                client.folderTree.remove client.convertRealPath(client.folders[i])
 
           if processingError
             continue
