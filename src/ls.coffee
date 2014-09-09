@@ -76,7 +76,7 @@ getFolder = Future.wrap(_getFolder)
 loadFolderTree = ->
   jsonFile =  "#{config.cacheLocation}/data/folderTree.json"
   now = Date.now()
-  client.folderTree.set '/', new BitcasaFolder(client, '/', 'root', now, now, [], true)
+  client.folderTree.set '/', new BitcasaFolder(client, '/', '', now, now, [], true)
   client.bitcasaTree.set( '/', '/')
 
   if fs.existsSync(jsonFile)
