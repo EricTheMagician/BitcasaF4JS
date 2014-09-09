@@ -422,9 +422,9 @@ class BitcasaClient
                 folders.push(folders[i])
                 apiRateLimit = true
               when 2001
-                client.folderTree.remove client.convertRealPath(client.folders[i])
+                client.folderTree.remove client.convertRealPath(client,folders[i])
               when 2002
-                client.folderTree.remove client.convertRealPath(client.folders[i])
+                client.folderTree.remove client.convertRealPath(client,folders[i])
 
           if processingError
             continue
