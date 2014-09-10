@@ -277,7 +277,7 @@ try
   client.logger.log "info", 'attempting to start f4js'
   opts = switch os.type()
     when 'Linux' then  ["-o", "allow_other"]
-    when 'Darwin' then  ["-o", "allow_other", "-o", "noappledouble", "-o", "daemon_timeout=0", '-o', 'nolocalcaches']
+    when 'Darwin' then  ["-o", "allow_other", "-o", "noappledouble", "-o", "daemon_timeout=0", '-o', 'noubc']
     else []
   fs.ensureDirSync(config.mountPoint)
   f4js.start(config.mountPoint, handlers, false, opts);
