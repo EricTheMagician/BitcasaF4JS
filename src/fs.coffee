@@ -69,9 +69,9 @@ ipc.serve ->
     client.logger.log "debug", "ls:add", data
 
     #add object to parent's children array.
-    parentPath = Bitcasa.convertReal(pth.dirname obj.path)
+    parentPath = client.convertReal(pth.dirname data.path)
     parent = client.folderTree.get(parentPath)
-    parent.children.push obj.name
+    parent.children.push data.name
 
     if data.size
       obj = new BitcasaFile(client, data.path, data.name, data.size, data.ctime, data.mtime, true)
