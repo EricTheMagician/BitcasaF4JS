@@ -69,7 +69,8 @@ ipc.serve ->
     client.logger.log "debug", "ls:add", data
 
     #add object to parent's children array.
-    parentPath = client.convertReal(pth.dirname data.path)
+    data.bitcasaPath = data.path
+    parentPath = client.convertRealPath(client,data)
     parent = client.folderTree.get(parentPath)
     parent.children.push data.name
 
