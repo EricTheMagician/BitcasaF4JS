@@ -85,7 +85,7 @@ ipc.serve ->
     parent = client.folderTree.get pth.dirname inData
     name = pth.basename inData
     idx = parent.children.indexOf name
-    parent.splice idx, 1
+    parent.children.splice idx, 1
     client.logger.log "debug", "ls:delete", inData
 
 ipc.server.start()
