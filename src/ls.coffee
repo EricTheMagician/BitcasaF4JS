@@ -248,13 +248,14 @@ getAllFolders= ->
       unless keysTree.has(key)
         keysTree.add key
         obj = client.folderTree.get key
-        ipc.of.client.emit 'ls:add',
+        ipc.of.client.emit 'ls:add',{
           realPath: key
-          path: obj.path
+          path: obj.bitcasaPath
           name: obj.name
           mtime: obj.mtime
           ctime: obj.ctime
           size: obj.size
+        }
 
       unless client.folderTree.get(key).updated
         client.folderTree.remove(key)
