@@ -121,7 +121,7 @@ class BitcasaClient
         @existCache.set location, true
         return true
       else
-        @existCache.set location, false, 15
+        @existCache.set location, false, 2
         return false
 
 
