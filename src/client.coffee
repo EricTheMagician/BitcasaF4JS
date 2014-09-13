@@ -57,8 +57,8 @@ magic = new Magic(mmm.MAGIC_MIME_TYPE)
 
 #wrap async fs methods to sync mode using fibers
 writeFile = Future.wrap(fs.writeFile)
-open = Future.wrap(fs.open)
-read = Future.wrap(fs.read)
+open = Future.wrap(fs.open,2)
+read = Future.wrap(fs.read,5)
 #since fs.exists does not return an error, wrap it using an error
 _exists = (path, cb) ->
   fs.exists path, (success)->
@@ -78,8 +78,6 @@ f = (file, cb) ->
     cb(err,res)
 detectFile = Future.wrap(f)
 
-memoizeMethods = require('memoizee/methods')
-existsMemoized = memoize(fs.existsSync, {maxAge:5000})
 class BitcasaClient
   constructor: (@id, @secret, @redirectUrl, @logger, @accessToken = null, @chunkSize = 1024*1024, @advancedChunks = 10, @cacheLocation = '/tmp/node-bitcasa') ->
     now = (new Date).getTime()
@@ -106,6 +104,21 @@ class BitcasaClient
     @fdCache.on 'expired', (key,value) ->
       client.logger.log "silly", "fd #{key} expired"
       close(value)
+
+    @existCache = new NodeCache({ stdTTL: 3600, checkperiod: 1200 })
+
+  exists: (location) ->
+    obj = @existCache.get location
+    if obj[location]
+      @existCache.ttl location
+      return true
+    else
+      if fs.existsSync(location)
+        @existCache.set location, true
+        return true
+      else
+        return false
+
 
   setRest: ->
     @client = new Client()
@@ -195,7 +208,7 @@ class BitcasaClient
 
       return null
 
-    if fs.existsSync(location)
+    if client.exists(location)
       readFile()
     else
       inData =

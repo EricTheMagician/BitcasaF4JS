@@ -32,7 +32,7 @@ class BitcasaFile
       filePath = pth.join(parentPath,file.name)
       cache = pth.join(client.downloadLocation,"#{basename}-#{rStart}-#{rEnd}")
       Fiber ->
-        unless exists(cache).wait()
+        unless client.exists(cache)
           unless client.downloadTree.has("#{file.bitcasaBasename}-#{rStart}")
             client.downloadTree.set("#{file.bitcasaBasename}-#{rStart}",1)
             _callback = ->
@@ -55,7 +55,7 @@ class BitcasaFile
       #wait for event emitting if downloading
       #otherwise, just read the file if it exists
       Fiber ->
-        exist = exists(pth.join(client.downloadLocation, "#{file.bitcasaBasename}-#{Math.floor((cStart)/client.chunkSize) * client.chunkSize}-#{ Math.min( Math.ceil(cEnd/client.chunkSize) * client.chunkSize, file.size)-1}")).wait()
+        exist = client.exists(pth.join(client.downloadLocation, "#{file.bitcasaBasename}-#{Math.floor((cStart)/client.chunkSize) * client.chunkSize}-#{ Math.min( Math.ceil(cEnd/client.chunkSize) * client.chunkSize, file.size)-1}"))
         unless exist
           unless client.downloadTree.has("#{file.bitcasaBasename}-#{cStart}")
             client.downloadTree.set("#{file.bitcasaBasename}-#{cStart}", 1)

@@ -21,7 +21,6 @@
     "fuse4js": "~0.1.9",
     "hashmap": "^1.1.0",
     "limiter": "~1.0.5",
-    "memoizee": "~0.3.5",
     "mmmagic": "^0.3.8",
     "node-cache": "^1.0.0",
     "node-ipc": "^1.1.0",
