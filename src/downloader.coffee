@@ -45,6 +45,11 @@ logger = new (winston.Logger)({
     ]
   })
 
+failedArguments =
+  buffer: new Buffer(0)
+  start: 0
+  end: 0
+
 download = (path, name, start,end,maxSize, cb ) ->
   #round the amount of bytes to be downloaded to multiple chunks
   chunkStart = Math.floor((start)/config.chunkSize) * config.chunkSize
@@ -57,25 +62,13 @@ download = (path, name, start,end,maxSize, cb ) ->
     #save location
     location = pth.join(config.cacheLocation, "download","#{baseName}-#{chunkStart}-#{chunkEnd}")
 
-    failedArguments =
-      buffer: new Buffer(0)
-      start: 0
-      end: 0
 
     #check if the data has been cached or not
     #otherwise, download from the web
 
     if exists(location).wait()
       readSize = end - start;
-      buffer = new Buffer(readSize+1)
-      fd = open(location,'r').wait()
-      bytesRead = read(fd,buffer,0,readSize+1, start-chunkStart).wait()
-      close(fd)
-      args =
-        buffer: buffer
-        start: 0
-        end: readSize + 1
-      cb(null,args)
+      cb(null,failedArguments)
       return null
     else
       logger.log("debug", "downloading #{name} - #{chunkStart}-#{chunkEnd}")

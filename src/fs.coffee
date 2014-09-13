@@ -66,7 +66,7 @@ ipc.config =
 
 ipc.serve ->
   ipc.server.on 'ls:add', (data, socket) ->
-    client.logger.log "debug", "ls:add", data
+    client.logger.log "debug", "ls:addded #{data.realPath}"
 
     #add object to parent's children array.
     parent = client.folderTree.get(pth.dirname( data.realPath))
@@ -115,6 +115,7 @@ chmod = (path,mod, cb) ->
 #  *     A positive value represents the number of bytes actually read.
 #  */
 read = (path, offset, len, buf, fh, cb) ->
+  client.logger.log "silly", "reading file #{path} - #{offset}:#{length}"
   folderTree =  client.folderTree
   if folderTree.has(path)
     chunkStart = Math.floor((offset)/client.chunkSize) * client.chunkSize
@@ -184,6 +185,7 @@ statfs= (cb) ->
 #  *     and names is the result in the form of an array of file names (when err === 0).
 #  */
 readdir = (path, cb) ->
+  client.logger.log "silly", "reading directory: #{path}"
   folderTree =  client.folderTree
   names = []
 
