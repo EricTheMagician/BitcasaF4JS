@@ -8,6 +8,7 @@ Future = require('fibers/future')
 Fiber = require 'fibers'
 wait = Future.wait
 EventEmitter = require("events").EventEmitter
+NodeCache = require( "node-cache" );
 
 ipc = require 'node-ipc'
 failedArgs =
@@ -56,8 +57,8 @@ magic = new Magic(mmm.MAGIC_MIME_TYPE)
 
 #wrap async fs methods to sync mode using fibers
 writeFile = Future.wrap(fs.writeFile)
-open = Future.wrap(fs.open)
-read = Future.wrap(fs.read)
+open = Future.wrap(fs.open,2)
+read = Future.wrap(fs.read,5)
 #since fs.exists does not return an error, wrap it using an error
 _exists = (path, cb) ->
   fs.exists path, (success)->
@@ -77,11 +78,10 @@ f = (file, cb) ->
     cb(err,res)
 detectFile = Future.wrap(f)
 
-memoizeMethods = require('memoizee/methods')
-existsMemoized = memoize(fs.existsSync, {maxAge:5000})
 class BitcasaClient
   constructor: (@id, @secret, @redirectUrl, @logger, @accessToken = null, @chunkSize = 1024*1024, @advancedChunks = 10, @cacheLocation = '/tmp/node-bitcasa') ->
     now = (new Date).getTime()
+    client = @
     root = new BitcasaFolder(@,'/', '', now, now, [], true)
     @folderTree = new hashmap()
     @folderTree.set("/", root)
@@ -99,6 +99,30 @@ class BitcasaClient
 
     for i in [0...2]
       ipc.connectTo "download#{i}"
+
+    @fdCache = new NodeCache({ stdTTL: 180, checkperiod: 240 })
+    @fdCache.on 'expired', (key,value) ->
+      client.logger.log "silly", "fd #{key} expired"
+      close(value)
+
+    @existCache = new NodeCache({ stdTTL: 3600, checkperiod: 1200 })
+
+  exists: (location) ->
+    obj = @existCache.get location
+    exists = obj[location]
+    if exists != undefined
+      if exists
+        @existCache.ttl location
+        return true
+      else
+        return false
+    else
+      if fs.existsSync(location)
+        @existCache.set location, true
+        return true
+      else
+        @existCache.set location, false, 2
+        return false
 
 
   setRest: ->
@@ -159,17 +183,22 @@ class BitcasaClient
         Fiber ->
           readSize = end - start;
           buffer = new Buffer(readSize+1)
-
-          try #sometimes, the cached file might deleted. if that happens, just try downloading/reading it again later
-            fd = open(location,'r').wait()
+          key = "#{basename}-#{chunkStart}-#{chunkEnd}"
+          try #sometimes, the cached file might deleted. #if that's the case, the filesystem handle it
+            temp = client.fdCache.get key
+            fd = temp[key]
+            unless typeof(fd) == 'number'
+              client.logger.log "silly", "opening file #{key}"
+              fd = open(location, 'r').wait()
+              client.fdCache.set key, fd
+            client.fdCache.ttl key
           catch error
-            client.logger.log "error", "there was a problem opening file: #{basename}-#{chunkStart}-#{chunkEnd}, #{error.message}"
+            client.logger.log "error", "there was a problem opening file: #{key}, #{error.message}"
             client.ee.emit 'downloaded', "error:opening file", "#{file.bitcasaBasename}-#{start}"
             cb("error:opening file")
 
             return
           bytesRead = read(fd,buffer,0,readSize+1, start-chunkStart).wait()
-          close(fd)
           args =
             buffer: buffer
             start: 0
@@ -184,7 +213,7 @@ class BitcasaClient
 
       return null
 
-    if fs.existsSync(location)
+    if client.exists(location)
       readFile()
     else
       inData =

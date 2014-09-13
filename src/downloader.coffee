@@ -67,7 +67,6 @@ download = (path, name, start,end,maxSize, cb ) ->
     #otherwise, download from the web
 
     if exists(location).wait()
-      readSize = end - start;
       cb(null,failedArguments)
       return null
     else
