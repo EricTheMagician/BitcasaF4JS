@@ -115,7 +115,7 @@ chmod = (path,mod, cb) ->
 #  *     A positive value represents the number of bytes actually read.
 #  */
 read = (path, offset, len, buf, fh, cb) ->
-  client.logger.log "silly", "reading file #{path} - #{offset}:#{length}"
+  client.logger.log "silly", "reading file #{path} - #{offset}:#{len}"
   folderTree =  client.folderTree
   if folderTree.has(path)
     chunkStart = Math.floor((offset)/client.chunkSize) * client.chunkSize
