@@ -8,6 +8,7 @@ Future = require('fibers/future')
 Fiber = require 'fibers'
 wait = Future.wait
 EventEmitter = require("events").EventEmitter
+NodeCache = require( "node-cache" );
 
 ipc = require 'node-ipc'
 failedArgs =
@@ -82,6 +83,7 @@ existsMemoized = memoize(fs.existsSync, {maxAge:5000})
 class BitcasaClient
   constructor: (@id, @secret, @redirectUrl, @logger, @accessToken = null, @chunkSize = 1024*1024, @advancedChunks = 10, @cacheLocation = '/tmp/node-bitcasa') ->
     now = (new Date).getTime()
+    client = @
     root = new BitcasaFolder(@,'/', '', now, now, [], true)
     @folderTree = new hashmap()
     @folderTree.set("/", root)
@@ -100,6 +102,10 @@ class BitcasaClient
     for i in [0...2]
       ipc.connectTo "download#{i}"
 
+    @fdCache = new NodeCache({ stdTTL: 180, checkperiod: 240 })
+    @fdCache.on 'expired', (key,value) ->
+      client.logger.log "silly", "fd #{key} expired"
+      close(value)
 
   setRest: ->
     @client = new Client()
@@ -160,8 +166,13 @@ class BitcasaClient
           readSize = end - start;
           buffer = new Buffer(readSize+1)
 
-          try #sometimes, the cached file might deleted. if that happens, just try downloading/reading it again later
-            fd = open(location,'r').wait()
+          try #sometimes, the cached file might deleted. #if that's the case, the filesystem handle it
+            fd = client.fdCache.get "#{basename}-#{chunkStart}-#{chunkEnd}"
+            unless typeof(fd) == 'number'
+              client.logger.log "silly", "opening file #{basename}-#{chunkStart}-#{chunkEnd}"
+              fd = open(location, 'r').wait()
+              client.fdCache.set "#{basename}-#{chunkStart}-#{chunkEnd}", fd
+            client.fdCache.ttl "#{basename}-#{chunkStart}-#{chunkEnd}"
           catch error
             client.logger.log "error", "there was a problem opening file: #{basename}-#{chunkStart}-#{chunkEnd}, #{error.message}"
             client.ee.emit 'downloaded', "error:opening file", "#{file.bitcasaBasename}-#{start}"
@@ -169,7 +180,6 @@ class BitcasaClient
 
             return
           bytesRead = read(fd,buffer,0,readSize+1, start-chunkStart).wait()
-          close(fd)
           args =
             buffer: buffer
             start: 0
