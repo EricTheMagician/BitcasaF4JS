@@ -109,14 +109,19 @@ class BitcasaClient
 
   exists: (location) ->
     obj = @existCache.get location
-    if obj[location]
-      @existCache.ttl location
-      return true
+    exists = obj[location]
+    if exists != undefined
+      if exists
+        @existCache.ttl location
+        return true
+      else
+        return false
     else
       if fs.existsSync(location)
         @existCache.set location, true
         return true
       else
+        @existCache.set location, false, 15
         return false
 
 
