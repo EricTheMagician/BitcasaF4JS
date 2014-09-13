@@ -165,16 +165,17 @@ class BitcasaClient
         Fiber ->
           readSize = end - start;
           buffer = new Buffer(readSize+1)
-
+          key = "#{basename}-#{chunkStart}-#{chunkEnd}"
           try #sometimes, the cached file might deleted. #if that's the case, the filesystem handle it
-            fd = client.fdCache.get "#{basename}-#{chunkStart}-#{chunkEnd}"
+            temp = client.fdCache.get key
+            fd = temp[key]
             unless typeof(fd) == 'number'
-              client.logger.log "silly", "opening file #{basename}-#{chunkStart}-#{chunkEnd}"
+              client.logger.log "silly", "opening file #{key}"
               fd = open(location, 'r').wait()
-              client.fdCache.set "#{basename}-#{chunkStart}-#{chunkEnd}", fd
-            client.fdCache.ttl "#{basename}-#{chunkStart}-#{chunkEnd}"
+              client.fdCache.set key, fd
+            client.fdCache.ttl key
           catch error
-            client.logger.log "error", "there was a problem opening file: #{basename}-#{chunkStart}-#{chunkEnd}, #{error.message}"
+            client.logger.log "error", "there was a problem opening file: #{key}, #{error.message}"
             client.ee.emit 'downloaded', "error:opening file", "#{file.bitcasaBasename}-#{start}"
             cb("error:opening file")
 
