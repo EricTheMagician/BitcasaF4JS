@@ -155,7 +155,7 @@ getAllFolders= ->
       logger.log  "silly", "folders length = #{folders.length}"
       tokens = Math.min(Math.floor(client.rateLimit.getTokensRemaining()/3), folders.length)
       if client.rateLimit.getTokensRemaining() < 30
-        setImmediate fiberRun
+        setTimeout fiberRun, 15000
         Fiber.yield()
         continue
 
