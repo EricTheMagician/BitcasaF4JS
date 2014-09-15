@@ -93,6 +93,7 @@ class BitcasaClient
     @ee.setMaxListeners(0)
     @downloadLocation = pth.join @cacheLocation, "download"
     @uploadLocation = pth.join @cacheLocation, "upload"
+    fs.ensureDirSync @cacheLocation
     fs.ensureDirSync(@downloadLocation)
     fs.ensureDirSync(@uploadLocation)
     @downloadServer = 0
@@ -121,7 +122,7 @@ class BitcasaClient
         @existCache.set location, true
         return true
       else
-        @existCache.set location, false, 2
+        @existCache.set location, false, 1
         return false
 
 
