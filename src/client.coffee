@@ -232,11 +232,12 @@ class BitcasaClient
       ipc.of[downloadServer].on 'downloaded', (data) ->
         if path == data.path and start == data.ostart
           if data.delete #make sure that the file was not deleted from bitcasa
-            parent = client.bitcasaTree.get pth.dirname path
+            parentPath = client.bitcasaTree.get pth.dirname( path)
+            parent = client.folderTree.get parentPath
             idx = parent.children.indexOf name
             if idx >= 0
               parent.children.slice idx, 1
-            client.folderTree.remove( pth.join(parent, name))
+            client.folderTree.remove( pth.join(parentPath, name))
             client.ee.emit 'downloaded', 3001,"#{file.bitcasaBasename}-#{start}"
             return cb(3001)
           else

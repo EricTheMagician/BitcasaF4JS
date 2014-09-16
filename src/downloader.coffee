@@ -117,7 +117,7 @@ download = (path, name, start,end,maxSize, cb ) ->
               return cb "delete"
             if code == 9006
               fn = ->
-                cb "api rate limit reached"
+                cb "api limit"
               return setTimeout( fn, 61000 )
         return cb "unhandled data type while downloading"
       else if  data.length !=  (chunkEnd - chunkStart + 1)
@@ -139,11 +139,23 @@ download = (path, name, start,end,maxSize, cb ) ->
 ipc.serve ->
   ipc.server.on 'download', (inData, socket) ->
     callback = (err, data) ->
-      if data == "delete"
-        outData =
-          ostart: inData.start #original start
-          path: inData.path
-          delete: true
+      if err
+        if err == "delete"
+          outData =
+            ostart: inData.start #original start
+            path: inData.path
+            delete: true
+        else if err == "api limit"
+          fn = ->
+            download( inData.path,  inData.name,  inData.start, inData.end, inData.maxSize, callback )
+          setTimeout fn, 61000
+        else
+          outData =
+            ostart: inData.start #original start
+            path: inData.path
+            delete: false
+
+
       else
         outData =
           ostart: inData.start #original start
