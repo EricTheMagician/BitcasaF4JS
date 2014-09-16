@@ -27,7 +27,7 @@ logger = new (winston.Logger)({
     ]
   })
 #bitcasa client
-client = new BitcasaClient(config.clientId, config.secret, config.redirectUrl, logger, config.accessToken, config.chunkSize, config.advancedChunks, config.cacheLocation)
+client = new BitcasaClient(config.clientId, config.secret, config.redirectUrl, logger, config.accessToken, config.chunkSize, config.advancedChunks, config.cacheLocation, config.nDownloadServers)
 client.validateAccessToken (err, data) ->
   if err
     throw new Error("access token is not valid")

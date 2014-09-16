@@ -55,7 +55,7 @@ module.exports = (grunt) ->
         },
         {
           src: 'src/start.sh',
-          dest: 'build/start.sh'
+          dest: 'build/start.sh.sample'
         }],
     ,
 

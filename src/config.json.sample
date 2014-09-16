@@ -3,6 +3,7 @@
   "mountPoint": "",
   "cacheLocation": "",
   "chunkSize": 33554432,
+  "nDownloadServers": 2,
   "advancedChunks": 4,
   "maxCache": 2048,
 

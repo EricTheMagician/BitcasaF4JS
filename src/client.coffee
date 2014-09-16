@@ -79,7 +79,11 @@ f = (file, cb) ->
 detectFile = Future.wrap(f)
 
 class BitcasaClient
-  constructor: (@id, @secret, @redirectUrl, @logger, @accessToken = null, @chunkSize = 1024*1024, @advancedChunks = 10, @cacheLocation = '/tmp/node-bitcasa') ->
+  constructor: (@id, @secret, @redirectUrl, @logger, @accessToken = null, @chunkSize = 1024*1024, @advancedChunks = 10, @cacheLocation = '/tmp/node-bitcasa', nDownloadServers) ->
+    if nDownloadServers
+      @nDownloadServers = nDownloadServers
+    else
+      @nDownloadServers = 2
     now = (new Date).getTime()
     client = @
     root = new BitcasaFolder(@,'/', '', now, now, [], true)
@@ -98,7 +102,7 @@ class BitcasaClient
     fs.ensureDirSync(@uploadLocation)
     @downloadServer = 0
 
-    for i in [0...2]
+    for i in [0...@nDownloadServers]
       ipc.connectTo "download#{i}"
 
     @fdCache = new NodeCache({ stdTTL: 180, checkperiod: 240 })
@@ -226,7 +230,7 @@ class BitcasaClient
       downloadServer = "download#{client.downloadServer}"
 
       #in the future, allow users to use more than 1 download server
-      client.downloadServer = (client.downloadServer + 1)% 2
+      client.downloadServer = (client.downloadServer + 1)% client.nDownloadServers
 
       ipc.of[downloadServer].emit 'download', inData
       ipc.of[downloadServer].on 'downloaded', (data) ->
