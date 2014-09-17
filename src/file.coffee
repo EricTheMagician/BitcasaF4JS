@@ -93,10 +93,11 @@ class BitcasaFile
           fiber.run()
           return null
 
-        #only read ahead on certain cases
+        #only read ahead if the start is within the start of the chunk
         if readAhead
-          BitcasaFile.recursive(client,file, Math.floor(file.size / client.chunkSize) * client.chunkSize, file.size)
-          BitcasaFile.recursive(client,file, chunkStart + i * client.chunkSize, chunkEnd + i * client.chunkSize) for i in [1..client.advancedChunks]
+          if chunkStart <= start < chunkStart + 131072
+            BitcasaFile.recursive(client,file, Math.floor(file.size / client.chunkSize) * client.chunkSize, file.size)
+            BitcasaFile.recursive(client,file, chunkStart + i * client.chunkSize, chunkEnd + i * client.chunkSize) for i in [1..client.advancedChunks]
 
         #download chunks
         data = download(start,end)
