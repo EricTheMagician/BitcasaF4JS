@@ -77,6 +77,7 @@ ipc.serve ->
     else
       obj = new BitcasaFolder(client, data.path, data.name, data.ctime, data.mtime,[], true)
     client.folderTree.set data.realPath, obj
+    client.bitcasaTree.set data.path, data.realPath
 
   ipc.server.on 'ls:delete', (inData, socket) ->
     client.folderTree.remove inData
