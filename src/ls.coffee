@@ -190,7 +190,7 @@ getAllFolders= ->
           logger.log "debug", "the bad data was:", data
           processingError = true
 
-          switch error
+          switch error.message
             when 9006
               apiRateLimit = true
               folders.push(folders[i])

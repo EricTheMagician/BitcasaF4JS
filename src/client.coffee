@@ -110,7 +110,7 @@ class BitcasaClient
       client.logger.log "silly", "fd #{key} expired"
       close(value)
 
-    @existCache = new NodeCache({ stdTTL: 3600, checkperiod: 1200 })
+    @existCache = new NodeCache({ stdTTL: 90, checkperiod: 120 })
 
   exists: (location) ->
     obj = @existCache.get location
